@@ -22,6 +22,21 @@ function copyContent(content: string) {
     duration: 2000
   })
 }
+const badgeColorMap = {
+  'string': 'primary',
+  'number': 'info',
+  'integer': 'info',
+  'boolean': 'secondary',
+  'uuid': 'primary',
+  'date-time': 'primary',
+  'email': 'primary',
+  'any': 'gray'
+}
+
+const getBadgeColor = (prop: any): string => {
+  const key = prop.format || prop.type || 'any'
+  return badgeColorMap[key] ?? 'gray'
+}
 
 function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
   if (!schema || typeof schema !== 'object') return null
@@ -78,6 +93,33 @@ function generateExampleFromSchema(schema: any, components: Record<string, any> 
   }
 }
 
+function mergeSchemas(schema: any, components: Record<string, any>): Record<string, any>[] {
+  const variants: Record<string, any>[] = []
+
+  const resolve = (s: any): any => {
+    if (s?.$ref) {
+      const ref = s.$ref.replace('#/components/schemas/', '')
+      return components.schemas?.[ref] ?? {}
+    }
+    return s
+  }
+
+  if (schema.anyOf || schema.oneOf) {
+    const list = schema.anyOf ?? schema.oneOf
+    return list.map(resolve)
+  }
+
+  if (schema.allOf) {
+    const merged: Record<string, any> = {}
+    for (const s of schema.allOf) {
+      Object.assign(merged, resolve(s))
+    }
+    return [merged]
+  }
+
+  return [schema]
+}
+
 function renderProperties(propsObj: Record<string, any>, level = 0): VNode[] {
   if (!propsObj) return []
 
@@ -100,7 +142,7 @@ function renderProperties(propsObj: Record<string, any>, level = 0): VNode[] {
             ? 'error'
             : prop.nullable ? 'warning' : 'info'
         }, {
-          default: () => prop.type || prop.format || 'any'
+          default: () => prop.format || prop.type || 'any'
         })
       ]),
       prop.description ? h('p', { class: 'text-xs text-muted mt-1' }, prop.description) : null,
@@ -110,10 +152,15 @@ function renderProperties(propsObj: Record<string, any>, level = 0): VNode[] {
           ])
         : null,
       prop.enum && prop.enum.length > 0
-        ? h('div', { class: 'text-xs text-muted mt-1 flex gap-1 flex-wrap' }, [
-            'Enum:',
+        ? h('div', { class: 'text-xs text-muted mt-1 flex gap-1 flex-wrap items-center' }, [
+            h('span', 'Enum:'),
             ...prop.enum.map((val: string) =>
-              h('span', { class: 'bg-blue-300 text-blue-900 rounded px-1', key: val }, val)
+              h(UBadge, {
+                key: val,
+                color: 'primary',
+                variant: 'soft',
+                size: 'sm'
+              }, () => val)
             )
           ])
         : null,
@@ -129,20 +176,40 @@ function renderProperties(propsObj: Record<string, any>, level = 0): VNode[] {
             'Nullable: ', h('code', { class: 'font-mono' }, 'true')
           ])
         : null,
-      prop.example !== undefined
+      (prop.example !== undefined && prop.example !== '')
         ? h('div', {
             class: 'text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono',
-            onClick: () => copyContent(JSON.stringify(prop.example, null, 2)),
+            onClick: () => copyContent(
+              typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
+                ? String(prop.example)
+                : JSON.stringify(prop.example, null, 2)
+            ),
             title: 'Click to copy example'
           }, [
-            h('pre', JSON.stringify(prop.example, null, 2))
+            typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
+              ? String(prop.example)
+              : h('pre', JSON.stringify(prop.example, null, 2))
           ])
         : null,
       prop.type === 'array' && prop.items
-        ? h('div', { class: 'mt-2' }, [
-            h('strong', 'Items:'),
-            ...renderProperties({ item: prop.items }, level + 1)
-          ])
+        ? h('div', { class: 'mt-2' }, (() => {
+            const items = prop.items
+            if (items.$ref && props.components?.schemas) {
+              const refName = items.$ref.replace('#/components/schemas/', '')
+              const resolved = props.components.schemas[refName]
+              return [
+                h('strong', 'Items:'),
+                ...renderProperties(resolved?.properties ?? {}, level + 1)
+              ]
+            }
+
+            return [
+              h('strong', 'Items:'),
+              ...(items.properties
+                ? renderProperties(items.properties, level + 1)
+                : renderProperties({ item: items }, level + 1))
+            ]
+          })())
         : null,
       prop.properties ? renderProperties(prop.properties, level + 1) : null
     ])
@@ -163,13 +230,20 @@ const example = computed(() => generateExampleFromSchema(props.schema, props.com
       @click="copyContent(JSON.stringify(example, null, 2))"
     >{{ JSON.stringify(example, null, 2) }}</pre>
 
-    <div v-if="schema.properties">
-      <h3 class="text-sm font-medium text-muted-foreground mb-2">
-        Properties
+    <div
+      v-for="(variant, index) in mergeSchemas(schema, components ?? {})"
+      :key="index"
+    >
+      <h3
+        v-if="schema.anyOf || schema.oneOf"
+        class="text-sm font-medium text-muted-foreground mb-2"
+      >
+        Variant {{ index + 1 }}
       </h3>
-      <div>
-        <component :is="{ render() { return renderProperties(schema.properties) } }" />
-      </div>
+      <component
+        :is="{ render() { return renderProperties(variant.properties) } }"
+        v-if="variant.properties"
+      />
     </div>
   </div>
 </template>
