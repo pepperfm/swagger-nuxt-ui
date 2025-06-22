@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, defineProps } from 'vue'
 import { useClipboard } from '@vueuse/core'
-
-import { UBadge, UAccordion, UPageCard } from '#components'
+// eslint-disable-next-line import/no-self-import
+import SchemaDetailCard from './SchemaDetailCard.vue'
 
 const props = defineProps<{
   schema: any
   components?: Record<string, any>
+  isNested?: boolean
 }>()
 
 const toast = useToast()
@@ -115,6 +116,7 @@ const example = computed(() => generateExampleFromSchema(props.schema, props.com
       Schema Example
     </h3>
     <pre
+      v-if="!isNested"
       class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-120 bg-muted text-muted-foreground cursor-pointer mb-4"
       title="Click to copy example"
       @click="copyContent(JSON.stringify(example, null, 2))"
@@ -136,8 +138,7 @@ const example = computed(() => generateExampleFromSchema(props.schema, props.com
           :key="name"
         >
           <UPageCard
-            class="my-2"
-            :style="{ marginLeft: `${0}rem` }"
+            class="my-2 px-4 py-2"
           >
             <div
               class="flex justify-between items-center cursor-pointer"
@@ -214,11 +215,38 @@ const example = computed(() => generateExampleFromSchema(props.schema, props.com
               </template>
             </div>
 
-            <SchemaDetailCard
-              v-if="prop.type === 'array' && prop.items"
-              :schema="prop.items.$ref ? (components?.schemas?.[prop.items.$ref.replace('#/components/schemas/', '')] ?? {}) : prop.items"
-              :components="components"
-            />
+            <div v-if="prop.type === 'array' && prop.items">
+              <UCollapsible>
+                <template #default="{ open }">
+                  <div class="flex items-center gap-1">
+                    <UButton
+                      size="xs"
+                      variant="ghost"
+                      icon="i-lucide-chevron-right"
+                      :class="{ 'rotate-90': open, 'transition-transform': true }"
+                      @click="open = !open"
+                    />
+                    <span class="text-xs text-muted">Items</span>
+                  </div>
+                </template>
+                <template #content>
+                  <div class="px-2 mt-2">
+                    <SchemaDetailCard
+                      v-if="prop.items.$ref || prop.items.properties"
+                      :schema="prop.items.$ref ? (components?.schemas?.[prop.items.$ref.replace('#/components/schemas/', '')] ?? {}) : prop.items"
+                      :components="components"
+                      :is-nested="true"
+                    />
+                    <div
+                      v-else
+                      class="text-xs text-muted font-mono"
+                    >
+                      {{ prop.items.type || 'unknown' }}
+                    </div>
+                  </div>
+                </template>
+              </UCollapsible>
+            </div>
           </UPageCard>
         </div>
       </template>
