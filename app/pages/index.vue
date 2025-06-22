@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
+import { computed } from 'vue'
 import type { HttpMethod, IApiSpec, IMethod, INavigationGroup, IParameter, PathsObject } from '~/types/types'
+import { generateExampleFromSchema } from '~/composables/schemaExample'
 
 const config = useRuntimeConfig()
 const baseURL = config.public.apiHost ?? 'http://localhost'
@@ -24,7 +26,17 @@ function copyUrl() {
     title: 'Copied!',
     description: 'Endpoint URL copied to clipboard.',
     color: 'success',
-    icon: 'i-lucide-copy'
+    icon: 'i-lucide-copy',
+    duration: 2000
+  })
+}
+function copyContent(content: string) {
+  copy(content)
+  toast.add({
+    title: 'Copied!',
+    color: 'success',
+    icon: 'i-lucide-copy',
+    duration: 2000
   })
 }
 
@@ -93,22 +105,6 @@ function getParameters(operationId: string) {
   }))
 }
 
-// function getRequestBody(operationId: string): string | null {
-//   const config = getMethodConfig(operationId)
-//   const body = config?.requestBody
-//   if (!body) return null
-//
-//   const json = body.content?.['application/json']
-//     ?? body.content?.['multipart/form-data']
-//     ?? body.content?.['application/x-www-form-urlencoded']
-//
-//   const schema = json?.schema
-//   const example = json?.example
-//
-//   if (example) return JSON.stringify(example, null, 2)
-//   if (schema) return JSON.stringify(schema, null, 2)
-//   return 'No body schema'
-// }
 function getRequestBodySchema(operationId: string) {
   const config = getMethodConfig(operationId)
   const body = config?.requestBody
@@ -182,6 +178,8 @@ function onSelect(item: {
     }
   }
 }
+
+const example = computed(() => generateExampleFromSchema(selectedItem.value?.schema, components.value ?? {}))
 
 function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'error' | 'info' {
   switch (method.toLowerCase()) {
@@ -316,14 +314,21 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
             </div>
           </UCard>
         </UPageBody>
-      </UPageBody>
+      </upagebody>
     </template>
 
     <template #right>
       <UPageAside>
-        <div class="max-w-6xl mx-auto p-6 space-y-6">
-          <h1 class="text-3xl font-bold">
-            API Documentation
+        <div class="max-w-6xl w-full">
+          <h1
+            v-if="selectedItem?.type === 'schema'"
+            class="text-3xl font-bold"
+          >
+            <pre
+              class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
+              title="Click to copy example"
+              @click="copyContent(JSON.stringify(example, null, 2))"
+            >{{ JSON.stringify(example, null, 2) }}</pre>
           </h1>
         </div>
       </UPageAside>

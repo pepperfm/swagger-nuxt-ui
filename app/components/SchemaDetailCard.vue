@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { computed, defineProps } from 'vue'
 import { useClipboard } from '@vueuse/core'
-// eslint-disable-next-line import/no-self-import
-import SchemaDetailCard from './SchemaDetailCard.vue'
 
-const props = defineProps<{
+defineProps<{
   schema: any
   components?: Record<string, any>
   isNested?: boolean
@@ -27,59 +24,6 @@ const getBadgeColor = (prop: any): 'error' | 'warning' | 'info' => {
   return prop.required
     ? 'error'
     : prop.nullable ? 'warning' : 'info'
-}
-
-function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
-  if (!schema || typeof schema !== 'object') return null
-
-  if (schema.example !== undefined) return schema.example
-  if (schema.default !== undefined) return schema.default
-
-  if (schema.$ref) {
-    const ref = schema.$ref.replace('#/components/schemas/', '')
-    const resolved = components?.schemas?.[ref]
-    if (resolved) return generateExampleFromSchema(resolved, components)
-  }
-
-  if (schema.allOf) {
-    return schema.allOf.reduce((acc: any, part: any) => {
-      const partExample = generateExampleFromSchema(part, components)
-      return { ...acc, ...partExample }
-    }, {})
-  }
-
-  if (schema.oneOf) {
-    return generateExampleFromSchema(schema.oneOf[0], components)
-  }
-
-  if (schema.anyOf) {
-    return schema.anyOf.reduce((acc: any, part: any) => {
-      const partExample = generateExampleFromSchema(part, components)
-      return { ...acc, ...partExample }
-    }, {})
-  }
-
-  switch (schema.type) {
-    case 'object': {
-      const result: Record<string, any> = {}
-      const props = schema.properties || {}
-      for (const [key, propSchema] of Object.entries(props)) {
-        result[key] = generateExampleFromSchema(propSchema, components)
-      }
-      return result
-    }
-    case 'array':
-      return [generateExampleFromSchema(schema.items, components)]
-    case 'string':
-      return schema.format === 'date-time' ? new Date().toISOString() : 'string'
-    case 'number':
-    case 'integer':
-      return 123
-    case 'boolean':
-      return true
-    default:
-      return null
-  }
 }
 
 function mergeSchemas(schema: any, components: Record<string, any>): Record<string, any>[] {
@@ -106,22 +50,10 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
 
   return [schema]
 }
-
-const example = computed(() => generateExampleFromSchema(props.schema, props.components ?? {}))
 </script>
 
 <template>
   <div v-if="schema">
-    <h3 class="text-sm font-medium text-muted-foreground mb-2">
-      Schema Example
-    </h3>
-    <pre
-      v-if="!isNested"
-      class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-120 bg-muted text-muted-foreground cursor-pointer mb-4"
-      title="Click to copy example"
-      @click="copyContent(JSON.stringify(example, null, 2))"
-    >{{ JSON.stringify(example, null, 2) }}</pre>
-
     <div
       v-for="(variant, index) in mergeSchemas(schema, components ?? {})"
       :key="index"
@@ -137,9 +69,7 @@ const example = computed(() => generateExampleFromSchema(props.schema, props.com
           v-for="(prop, name) in variant.properties"
           :key="name"
         >
-          <UPageCard
-            class="my-2 px-4 py-2"
-          >
+          <UPageCard class="my-2">
             <div
               class="flex justify-between items-center cursor-pointer"
               @click="copyContent(name)"
