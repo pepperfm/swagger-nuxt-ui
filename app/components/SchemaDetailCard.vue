@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { VNode } from 'vue'
-import { computed, defineProps, h } from 'vue'
+import { computed, defineProps } from 'vue'
 import { useClipboard } from '@vueuse/core'
 
 import { UBadge, UAccordion, UPageCard } from '#components'
@@ -49,12 +48,10 @@ function generateExampleFromSchema(schema: any, components: Record<string, any> 
   }
 
   if (schema.oneOf) {
-    // Можно взять первый элемент
     return generateExampleFromSchema(schema.oneOf[0], components)
   }
 
   if (schema.anyOf) {
-    // Объединяем все варианты anyOf
     return schema.anyOf.reduce((acc: any, part: any) => {
       const partExample = generateExampleFromSchema(part, components)
       return { ...acc, ...partExample }
@@ -85,8 +82,6 @@ function generateExampleFromSchema(schema: any, components: Record<string, any> 
 }
 
 function mergeSchemas(schema: any, components: Record<string, any>): Record<string, any>[] {
-  const variants: Record<string, any>[] = []
-
   const resolve = (s: any): any => {
     if (s?.$ref) {
       const ref = s.$ref.replace('#/components/schemas/', '')
@@ -109,102 +104,6 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
   }
 
   return [schema]
-}
-
-function renderProperties(propsObj: Record<string, any>, level = 0): VNode[] {
-  if (!propsObj) return []
-
-  return Object.entries(propsObj).map(([name, prop]) => {
-    return h(UPageCard, {
-      key: `${name}-${level}`,
-      class: 'my-2',
-      style: { marginLeft: `${level * 1.5}rem` }
-    }, {
-      default: () => [
-        h('div', {
-          class: 'flex justify-between items-center cursor-pointer',
-          onClick: () => copyContent(name)
-        }, [
-          h('div', { class: 'font-mono text-sm' }, name),
-          h(UBadge, {
-            class: 'uppercase',
-            size: 'sm',
-            variant: 'soft',
-            color: getBadgeColor(prop)
-          }, {
-            default: () => prop.format || prop.type || 'any'
-          })
-        ]),
-        prop.description ? h('p', { class: 'text-xs text-muted mt-1' }, prop.description) : null,
-        prop.format
-          ? h('p', { class: 'text-xs text-muted mt-1' }, [
-              'Format: ', h('code', { class: 'font-mono' }, prop.format)
-            ])
-          : null,
-        prop.enum && prop.enum.length > 0
-          ? h('div', { class: 'text-xs text-muted mt-1 flex gap-1 flex-wrap items-center' }, [
-              h('span', 'Enum:'),
-              ...prop.enum.map((val: string) =>
-                h(UBadge, {
-                  key: val,
-                  color: 'primary',
-                  variant: 'soft',
-                  size: 'sm'
-                }, () => val)
-              )
-            ])
-          : null,
-        (prop.minLength !== undefined || prop.maxLength !== undefined)
-          ? h('p', { class: 'text-xs text-muted mt-1' }, [
-              prop.minLength !== undefined ? `Min length: ${prop.minLength}` : '',
-              (prop.minLength !== undefined && prop.maxLength !== undefined) ? ' · ' : '',
-              prop.maxLength !== undefined ? `Max length: ${prop.maxLength}` : ''
-            ])
-          : null,
-        prop.nullable
-          ? h('p', { class: 'text-xs text-muted mt-1' }, [
-              'Nullable: ', h('code', { class: 'font-mono' }, 'true')
-            ])
-          : null,
-        (prop.example !== undefined && prop.example !== '')
-          ? h('div', {
-              class: 'text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono',
-              onClick: () => copyContent(
-                typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
-                  ? String(prop.example)
-                  : JSON.stringify(prop.example, null, 2)
-              ),
-              title: 'Click to copy example'
-            }, [
-              typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
-                ? String(prop.example)
-                : h('pre', JSON.stringify(prop.example, null, 2))
-            ])
-          : null,
-        prop.type === 'array' && prop.items
-          ? h('div', { class: 'mt-2' }, (() => {
-              const items = prop.items
-              if (items.$ref && props.components?.schemas) {
-                const refName = items.$ref.replace('#/components/schemas/', '')
-                const resolved = props.components.schemas[refName]
-                return [
-                  h('strong', 'Items:'),
-                  ...renderProperties(resolved?.properties ?? {}, level + 1)
-                ]
-              }
-
-              return [
-                h('strong', 'Items:'),
-                ...(items.properties
-                  ? renderProperties(items.properties, level + 1)
-                  : renderProperties({ item: items }, level + 1))
-              ]
-            })())
-          : null,
-        prop.properties ? renderProperties(prop.properties, level + 1) : null
-      ]
-    })
-  })
 }
 
 const example = computed(() => generateExampleFromSchema(props.schema, props.components ?? {}))
@@ -231,10 +130,98 @@ const example = computed(() => generateExampleFromSchema(props.schema, props.com
       >
         Variant {{ index + 1 }}
       </h3>
-      <component
-        :is="{ render() { return renderProperties(variant.properties) } }"
-        v-if="variant.properties"
-      />
+      <template v-if="variant.properties">
+        <div
+          v-for="(prop, name) in variant.properties"
+          :key="name"
+        >
+          <UPageCard
+            class="my-2"
+            :style="{ marginLeft: `${0}rem` }"
+          >
+            <div
+              class="flex justify-between items-center cursor-pointer"
+              @click="copyContent(name)"
+            >
+              <div class="font-mono text-sm">
+                {{ name }}
+              </div>
+              <UBadge
+                class="uppercase"
+                size="sm"
+                variant="soft"
+                :color="getBadgeColor(prop)"
+              >
+                {{ prop.format || prop.type || 'any' }}
+              </UBadge>
+            </div>
+
+            <p
+              v-if="prop.description"
+              class="text-xs text-muted mt-1"
+            >
+              {{ prop.description }}
+            </p>
+
+            <p
+              v-if="prop.format"
+              class="text-xs text-muted mt-1"
+            >
+              Format: <code class="font-mono">{{ prop.format }}</code>
+            </p>
+
+            <div
+              v-if="prop.enum?.length"
+              class="text-xs text-muted mt-1 flex gap-1 flex-wrap items-center"
+            >
+              <span>Enum:</span>
+              <UBadge
+                v-for="(val, i) in prop.enum"
+                :key="val + i"
+                color="primary"
+                variant="soft"
+                size="sm"
+              >
+                {{ val }}
+              </UBadge>
+            </div>
+
+            <p
+              v-if="prop.minLength !== undefined || prop.maxLength !== undefined"
+              class="text-xs text-muted mt-1"
+            >
+              <span v-if="prop.minLength !== undefined">Min length: {{ prop.minLength }}</span>
+              <span v-if="prop.minLength !== undefined && prop.maxLength !== undefined"> · </span>
+              <span v-if="prop.maxLength !== undefined">Max length: {{ prop.maxLength }}</span>
+            </p>
+
+            <p
+              v-if="prop.nullable"
+              class="text-xs text-muted mt-1"
+            >
+              Nullable: <code class="font-mono">true</code>
+            </p>
+
+            <div
+              v-if="prop.example !== undefined && prop.example !== ''"
+              class="text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono"
+              title="Click to copy example"
+              @click="copyContent(typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean' ? String(prop.example) : JSON.stringify(prop.example, null, 2))"
+            >
+              <pre v-if="typeof prop.example !== 'string' && typeof prop.example !== 'number' && typeof prop.example !== 'boolean'">{{ JSON.stringify(prop.example, null, 2) }}</pre>
+              <template v-else>
+                {{ prop.example }}
+              </template>
+            </div>
+
+            <SchemaDetailCard
+              v-if="prop.type === 'array' && prop.items"
+              :schema="prop.items.$ref ? (components?.schemas?.[prop.items.$ref.replace('#/components/schemas/', '')] ?? {}) : prop.items"
+              :components="components"
+            />
+          </UPageCard>
+        </div>
+      </template>
     </div>
   </div>
 </template>
