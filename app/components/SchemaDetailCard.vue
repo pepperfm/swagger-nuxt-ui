@@ -3,7 +3,7 @@ import type { VNode } from 'vue'
 import { computed, defineProps, h } from 'vue'
 import { useClipboard } from '@vueuse/core'
 
-import { UBadge } from '#components'
+import { UBadge, UAccordion, UPageCard } from '#components'
 
 const props = defineProps<{
   schema: any
@@ -22,20 +22,11 @@ function copyContent(content: string) {
     duration: 2000
   })
 }
-const badgeColorMap = {
-  'string': 'primary',
-  'number': 'info',
-  'integer': 'info',
-  'boolean': 'secondary',
-  'uuid': 'primary',
-  'date-time': 'primary',
-  'email': 'primary',
-  'any': 'gray'
-}
 
-const getBadgeColor = (prop: any): string => {
-  const key = prop.format || prop.type || 'any'
-  return badgeColorMap[key] ?? 'gray'
+const getBadgeColor = (prop: any): 'error' | 'warning' | 'info' => {
+  return prop.required
+    ? 'error'
+    : prop.nullable ? 'warning' : 'info'
 }
 
 function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
@@ -124,95 +115,95 @@ function renderProperties(propsObj: Record<string, any>, level = 0): VNode[] {
   if (!propsObj) return []
 
   return Object.entries(propsObj).map(([name, prop]) => {
-    return h('div', {
+    return h(UPageCard, {
       key: `${name}-${level}`,
-      class: 'rounded-lg border border-muted p-4 bg-muted/10 dark:bg-muted/20 my-2',
+      class: 'my-2',
       style: { marginLeft: `${level * 1.5}rem` }
-    }, [
-      h('div', {
-        class: 'flex justify-between items-center cursor-pointer',
-        onClick: () => copyContent(name)
-      }, [
-        h('div', { class: 'font-mono text-sm' }, name),
-        h(UBadge, {
-          class: 'uppercase',
-          size: 'sm',
-          variant: 'soft',
-          color: prop.required
-            ? 'error'
-            : prop.nullable ? 'warning' : 'info'
-        }, {
-          default: () => prop.format || prop.type || 'any'
-        })
-      ]),
-      prop.description ? h('p', { class: 'text-xs text-muted mt-1' }, prop.description) : null,
-      prop.format
-        ? h('p', { class: 'text-xs text-muted mt-1' }, [
-            'Format: ', h('code', { class: 'font-mono' }, prop.format)
-          ])
-        : null,
-      prop.enum && prop.enum.length > 0
-        ? h('div', { class: 'text-xs text-muted mt-1 flex gap-1 flex-wrap items-center' }, [
-            h('span', 'Enum:'),
-            ...prop.enum.map((val: string) =>
-              h(UBadge, {
-                key: val,
-                color: 'primary',
-                variant: 'soft',
-                size: 'sm'
-              }, () => val)
-            )
-          ])
-        : null,
-      (prop.minLength !== undefined || prop.maxLength !== undefined)
-        ? h('p', { class: 'text-xs text-muted mt-1' }, [
-            prop.minLength !== undefined ? `Min length: ${prop.minLength}` : '',
-            (prop.minLength !== undefined && prop.maxLength !== undefined) ? ' · ' : '',
-            prop.maxLength !== undefined ? `Max length: ${prop.maxLength}` : ''
-          ])
-        : null,
-      prop.nullable
-        ? h('p', { class: 'text-xs text-muted mt-1' }, [
-            'Nullable: ', h('code', { class: 'font-mono' }, 'true')
-          ])
-        : null,
-      (prop.example !== undefined && prop.example !== '')
-        ? h('div', {
-            class: 'text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono',
-            onClick: () => copyContent(
+    }, {
+      default: () => [
+        h('div', {
+          class: 'flex justify-between items-center cursor-pointer',
+          onClick: () => copyContent(name)
+        }, [
+          h('div', { class: 'font-mono text-sm' }, name),
+          h(UBadge, {
+            class: 'uppercase',
+            size: 'sm',
+            variant: 'soft',
+            color: getBadgeColor(prop)
+          }, {
+            default: () => prop.format || prop.type || 'any'
+          })
+        ]),
+        prop.description ? h('p', { class: 'text-xs text-muted mt-1' }, prop.description) : null,
+        prop.format
+          ? h('p', { class: 'text-xs text-muted mt-1' }, [
+              'Format: ', h('code', { class: 'font-mono' }, prop.format)
+            ])
+          : null,
+        prop.enum && prop.enum.length > 0
+          ? h('div', { class: 'text-xs text-muted mt-1 flex gap-1 flex-wrap items-center' }, [
+              h('span', 'Enum:'),
+              ...prop.enum.map((val: string) =>
+                h(UBadge, {
+                  key: val,
+                  color: 'primary',
+                  variant: 'soft',
+                  size: 'sm'
+                }, () => val)
+              )
+            ])
+          : null,
+        (prop.minLength !== undefined || prop.maxLength !== undefined)
+          ? h('p', { class: 'text-xs text-muted mt-1' }, [
+              prop.minLength !== undefined ? `Min length: ${prop.minLength}` : '',
+              (prop.minLength !== undefined && prop.maxLength !== undefined) ? ' · ' : '',
+              prop.maxLength !== undefined ? `Max length: ${prop.maxLength}` : ''
+            ])
+          : null,
+        prop.nullable
+          ? h('p', { class: 'text-xs text-muted mt-1' }, [
+              'Nullable: ', h('code', { class: 'font-mono' }, 'true')
+            ])
+          : null,
+        (prop.example !== undefined && prop.example !== '')
+          ? h('div', {
+              class: 'text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono',
+              onClick: () => copyContent(
+                typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
+                  ? String(prop.example)
+                  : JSON.stringify(prop.example, null, 2)
+              ),
+              title: 'Click to copy example'
+            }, [
               typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
                 ? String(prop.example)
-                : JSON.stringify(prop.example, null, 2)
-            ),
-            title: 'Click to copy example'
-          }, [
-            typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean'
-              ? String(prop.example)
-              : h('pre', JSON.stringify(prop.example, null, 2))
-          ])
-        : null,
-      prop.type === 'array' && prop.items
-        ? h('div', { class: 'mt-2' }, (() => {
-            const items = prop.items
-            if (items.$ref && props.components?.schemas) {
-              const refName = items.$ref.replace('#/components/schemas/', '')
-              const resolved = props.components.schemas[refName]
+                : h('pre', JSON.stringify(prop.example, null, 2))
+            ])
+          : null,
+        prop.type === 'array' && prop.items
+          ? h('div', { class: 'mt-2' }, (() => {
+              const items = prop.items
+              if (items.$ref && props.components?.schemas) {
+                const refName = items.$ref.replace('#/components/schemas/', '')
+                const resolved = props.components.schemas[refName]
+                return [
+                  h('strong', 'Items:'),
+                  ...renderProperties(resolved?.properties ?? {}, level + 1)
+                ]
+              }
+
               return [
                 h('strong', 'Items:'),
-                ...renderProperties(resolved?.properties ?? {}, level + 1)
+                ...(items.properties
+                  ? renderProperties(items.properties, level + 1)
+                  : renderProperties({ item: items }, level + 1))
               ]
-            }
-
-            return [
-              h('strong', 'Items:'),
-              ...(items.properties
-                ? renderProperties(items.properties, level + 1)
-                : renderProperties({ item: items }, level + 1))
-            ]
-          })())
-        : null,
-      prop.properties ? renderProperties(prop.properties, level + 1) : null
-    ])
+            })())
+          : null,
+        prop.properties ? renderProperties(prop.properties, level + 1) : null
+      ]
+    })
   })
 }
 
