@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
 import { computed } from 'vue'
-import type { HttpMethod, IApiSpec, IMethod, INavigationGroup, IParameter, PathsObject } from '~/types/types'
+import type { HttpMethod, IMethod, INavigationGroup, IParameter, PathsObject } from '~/types/types'
 import { generateExampleFromSchema } from '~/composables/schemaExample'
 import { useCopy } from '~/composables/useCopy'
+import { useOpenApiSchema } from '~/composables/useOpenApiSchema'
+
+const { schema, url } = useOpenApiSchema()
 
 const config = useRuntimeConfig()
-const baseURL = config.public.apiHost
+// const baseURL = config.public.apiHost
 const baseApiUrl = config.public.apiUrl
 
-const { data: spec } = await useFetch<IApiSpec>(`${baseURL}/docs?api-docs.json`)
-const title = computed(() => spec.value?.info?.title)
-const description = computed(() => spec.value?.info?.description)
-const components = computed(() => spec.value?.components)
-const securitySchemes = computed(() => spec.value?.components?.securitySchemes)
+// const { data: spec } = await useFetch<IApiSpec>(`${baseURL}/docs?api-docs.json`)
+const title = computed(() => schema.value?.info?.title)
+const description = computed(() => schema.value?.info?.description)
+const components = computed(() => schema.value?.components)
+const securitySchemes = computed(() => schema.value?.components?.securitySchemes)
 
 const toast = useToast()
 const { copyContent } = useCopy()
@@ -32,48 +35,49 @@ function copyUrl() {
   })
 }
 
-const paths = spec.value?.paths as PathsObject
-const schemas = spec.value?.components?.schemas ?? {}
+const paths = computed(() => schema.value?.paths as PathsObject)
+const schemas = computed(() => schema.value?.components?.schemas ?? {})
 
-const endpointGroups: Record<string, INavigationGroup> = {}
-Object.entries(paths ?? {}).forEach(([url, methods]) => {
-  Object.entries(methods).forEach(([method, config]) => {
-    const typedConfig = config as IMethod
-    const typedMethod = method as HttpMethod
-    const tag = typedConfig.tags?.[0] ?? 'General'
-
-    if (!endpointGroups[tag]) {
-      endpointGroups[tag] = {
-        _path: `#tag-${tag}`,
-        title: tag,
-        children: []
+const endpointGroups: ComputedRef<Record<string, INavigationGroup>> = computed(() => {
+  const groups: Record<string, INavigationGroup> = {}
+  Object.entries(paths.value ?? {}).forEach(([url, methods]) => {
+    Object.entries(methods).forEach(([method, config]) => {
+      const typedConfig = config as IMethod
+      const typedMethod = method as HttpMethod
+      const tag = typedConfig.tags?.[0] ?? 'General'
+      if (!groups[tag]) {
+        groups[tag] = {
+          _path: `#tag-${tag}`,
+          title: tag,
+          children: []
+        }
       }
-    }
-
-    endpointGroups[tag].children.push({
-      _path: `#${method}-${url}`,
-      title: typedConfig.summary || 'No title provided',
-      description: typedConfig.description,
-      method: typedMethod,
-      operationId: typedConfig.operationId
+      groups[tag].children.push({
+        _path: `#${method}-${url}`,
+        title: typedConfig.summary || 'No title provided',
+        description: typedConfig.description,
+        method: typedMethod,
+        operationId: typedConfig.operationId
+      })
     })
   })
+  return groups
 })
 
-const endpointNavigation = Object.values(endpointGroups)
-const schemaNavigation: INavigationGroup = {
+const endpointNavigation = computed(() => Object.values(endpointGroups.value))
+const schemaNavigation = computed((): INavigationGroup => ({
   _path: '#schemas',
   title: 'Schemas',
-  children: Object.keys(schemas).map(name => ({
+  children: Object.keys(schemas.value).map(name => ({
     _path: `#schema-${name}`,
     title: name,
     method: '',
     operationId: `schema-${name}`
   }))
-}
+}))
 
 function getMethodConfig(operationId: string): IMethod | undefined {
-  const paths = spec.value?.paths as PathsObject
+  const paths = schema.value?.paths as PathsObject
   for (const methods of Object.values(paths)) {
     for (const methodConfig of Object.values(methods)) {
       if (methodConfig?.operationId === operationId) {
@@ -143,8 +147,8 @@ function onSelect(item: {
   method?: string
   operationId: string
 }) {
-  const paths = spec.value?.paths as PathsObject
-  const schemas = spec.value?.components?.schemas || {}
+  const paths = schema.value?.paths as PathsObject
+  const schemas = schema.value?.components?.schemas || {}
 
   if (item.method?.length) {
     for (const [url, methods] of Object.entries(paths)) {
@@ -210,7 +214,7 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
       <UPageHeader
         :title="title"
         :description="description"
-        :headline="`${baseURL}/docs?api-docs.json`"
+        :headline="url"
       />
       <UPageBody>
         <UPageBody v-if="selectedItem">

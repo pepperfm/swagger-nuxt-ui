@@ -1,4 +1,6 @@
 <script setup>
+import { useOpenApiSchema } from '~/composables/useOpenApiSchema'
+
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' }
@@ -10,6 +12,32 @@ useHead({
     lang: 'en'
   }
 })
+
+const origin = ref('')
+const toast = useToast()
+
+async function loadSchema() {
+  const { schema, url } = useOpenApiSchema()
+
+  try {
+    const res = await fetch(`/api/swagger?url=${encodeURIComponent(origin.value)}`)
+
+    url.value = origin.value
+    schema.value = await res.json()
+
+    toast.add({
+      title: 'Schema loaded',
+      color: 'green',
+      icon: 'i-lucide-check'
+    })
+  } catch {
+    toast.add({
+      title: 'Failed to load schema',
+      color: 'red',
+      icon: 'i-lucide-x-circle'
+    })
+  }
+}
 
 const title = 'Nuxt Starter Template'
 const description = 'Nuxt UI Pro is a collection of premium Vue components built on top of Nuxt UI to create beautiful & responsive Nuxt applications in minutes.'
@@ -32,11 +60,29 @@ useSeoMeta({
         <NuxtLink to="/">
           <LogoPro class="w-auto h-6 shrink-0" />
         </NuxtLink>
-
-        <TemplateMenu />
       </template>
 
       <template #right>
+        <UInput
+          v-model="origin"
+          placeholder="Enter Swagger JSON URL"
+          size="sm"
+          icon="i-lucide-link"
+          class="w-md"
+          @keydown.enter="loadSchema"
+        >
+          <template #trailing>
+            <UButton
+              color="neutral"
+              variant="link"
+              size="sm"
+              icon="i-lucide-circle-check"
+              aria-label="Submit input"
+              @click="loadSchema"
+            />
+          </template>
+        </UInput>
+
         <ColorModeButton />
       </template>
     </UHeader>
@@ -55,14 +101,7 @@ useSeoMeta({
       </template>
 
       <template #right>
-        <UButton
-          to="https://github.com/nuxt-ui-pro/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
+        <ColorModeButton />
       </template>
     </UFooter>
   </UApp>
