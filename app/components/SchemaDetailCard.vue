@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useClipboard } from '@vueuse/core'
+import { useCopy } from '~/composables/useCopy'
 
 defineProps<{
   schema: any
@@ -7,18 +7,7 @@ defineProps<{
   isNested?: boolean
 }>()
 
-const toast = useToast()
-const { copy } = useClipboard()
-
-function copyContent(content: string) {
-  copy(content)
-  toast.add({
-    title: 'Copied!',
-    color: 'success',
-    icon: 'i-lucide-copy',
-    duration: 2000
-  })
-}
+const { copyContent } = useCopy()
 
 const getBadgeColor = (prop: any): 'error' | 'warning' | 'info' => {
   return prop.required

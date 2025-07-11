@@ -3,6 +3,7 @@ import { useClipboard } from '@vueuse/core'
 import { computed } from 'vue'
 import type { HttpMethod, IApiSpec, IMethod, INavigationGroup, IParameter, PathsObject } from '~/types/types'
 import { generateExampleFromSchema } from '~/composables/schemaExample'
+import { useCopy } from '~/composables/useCopy'
 
 const config = useRuntimeConfig()
 const baseURL = config.public.apiHost
@@ -15,7 +16,7 @@ const components = computed(() => spec.value?.components)
 const securitySchemes = computed(() => spec.value?.components?.securitySchemes)
 
 const toast = useToast()
-
+const { copyContent } = useCopy()
 const { copy } = useClipboard()
 
 function copyUrl() {
@@ -25,15 +26,6 @@ function copyUrl() {
   toast.add({
     title: 'Copied!',
     description: 'Endpoint URL copied to clipboard.',
-    color: 'success',
-    icon: 'i-lucide-copy',
-    duration: 2000
-  })
-}
-function copyContent(content: string) {
-  copy(content)
-  toast.add({
-    title: 'Copied!',
     color: 'success',
     icon: 'i-lucide-copy',
     duration: 2000

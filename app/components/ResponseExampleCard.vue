@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { IMethod, ResponseExample } from '~/types/types'
+import { useCopy } from '~/composables/useCopy'
 
 const props = defineProps<{
   method: IMethod | undefined
   components?: Record<string, any>
 }>()
+
+const { copyContent } = useCopy()
 
 function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
   if (!schema || typeof schema !== 'object') return null
@@ -122,7 +125,8 @@ watch(() => props.method, () => {
       </p>
       <pre
         v-if="item.example !== undefined"
-        class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-120 bg-muted text-muted-foreground"
+        class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-120 bg-muted text-muted-foreground cursor-pointer"
+        @click="copyContent(JSON.stringify(item.example, null, 2))"
       >{{ JSON.stringify(item.example, null, 2) }}</pre>
     </div>
   </div>
