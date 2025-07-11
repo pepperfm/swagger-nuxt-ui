@@ -5,8 +5,8 @@ import type { HttpMethod, IApiSpec, IMethod, INavigationGroup, IParameter, Paths
 import { generateExampleFromSchema } from '~/composables/schemaExample'
 
 const config = useRuntimeConfig()
-const baseURL = config.public.apiHost ?? 'http://localhost'
-const baseApiUrl = config.public.apiUrl ?? 'http://localhost/api'
+const baseURL = config.public.apiHost
+const baseApiUrl = config.public.apiUrl
 
 const { data: spec } = await useFetch<IApiSpec>(`${baseURL}/docs?api-docs.json`)
 const title = computed(() => spec.value?.info?.title)
@@ -44,7 +44,6 @@ const paths = spec.value?.paths as PathsObject
 const schemas = spec.value?.components?.schemas ?? {}
 
 const endpointGroups: Record<string, INavigationGroup> = {}
-
 Object.entries(paths ?? {}).forEach(([url, methods]) => {
   Object.entries(methods).forEach(([method, config]) => {
     const typedConfig = config as IMethod
@@ -61,7 +60,8 @@ Object.entries(paths ?? {}).forEach(([url, methods]) => {
 
     endpointGroups[tag].children.push({
       _path: `#${method}-${url}`,
-      title: typedConfig.summary,
+      title: typedConfig.summary || 'No title provided',
+      description: typedConfig.description,
       method: typedMethod,
       operationId: typedConfig.operationId
     })
@@ -69,7 +69,6 @@ Object.entries(paths ?? {}).forEach(([url, methods]) => {
 })
 
 const endpointNavigation = Object.values(endpointGroups)
-
 const schemaNavigation: INavigationGroup = {
   _path: '#schemas',
   title: 'Schemas',
@@ -134,6 +133,7 @@ const selectedItem = ref<
     method: string
     url: string
     summary?: string
+    description?: string
     operationId: string
   }
   | {
@@ -146,7 +146,8 @@ const selectedItem = ref<
 
 function onSelect(item: {
   _path: string
-  title: string
+  title?: string
+  description?: string
   method?: string
   operationId: string
 }) {
@@ -162,6 +163,7 @@ function onSelect(item: {
           method: item.method,
           url,
           summary: methodConfig.summary,
+          description: item.description,
           operationId: item.operationId
         }
         return
@@ -248,6 +250,11 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
               <p class="mt-4 text-muted-foreground">
                 {{ selectedItem.summary || 'No summary provided.' }}
               </p>
+              <p
+                v-if="selectedItem.description"
+                class="mt-4 text-muted-foreground"
+                v-html="selectedItem.description"
+              />
 
               <div class="mt-6 space-y-4">
                 <div v-if="getSecurity(selectedItem.operationId)">

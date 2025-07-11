@@ -1,6 +1,7 @@
 interface INavigationItem {
   _path: string
-  title: string
+  title: ?string
+  description: ?string
   method: HttpMethod
   operationId: string
 }
@@ -41,7 +42,8 @@ interface IResponse {
 
 export interface IMethod {
   tags: string[]
-  summary: string
+  summary: ?string
+  description: ?string
   operationId: string
   parameters?: IParameter[]
   requestBody?: {

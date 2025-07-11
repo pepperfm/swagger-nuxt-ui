@@ -17,7 +17,7 @@ defineProps<{
       :key="param.name + param.in"
       class="border-l-2 pl-4 border-muted"
     >
-      <div class="flex items-center gap-2 text-sm font-medium text-foreground">
+      <div class="flex items-center gap-2 text-lg font-medium text-foreground">
         <code class="font-mono">{{ param.name }}</code>
         <UBadge
           size="sm"
@@ -44,7 +44,7 @@ defineProps<{
       </div>
       <p
         v-if="param.description"
-        class="text-xs text-muted-foreground mt-1"
+        class="text-sm text-muted mt-1"
         v-html="param.description"
       />
     </div>
