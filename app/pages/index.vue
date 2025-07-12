@@ -1,16 +1,49 @@
 <script setup lang="ts">
-import { useClipboard } from '@vueuse/core'
+import { useClipboard, useLocalStorage } from '@vueuse/core'
 import { computed } from 'vue'
 import type { HttpMethod, IMethod, INavigationGroup, IParameter, PathsObject } from '~/types/types'
 import { generateExampleFromSchema } from '~/composables/schemaExample'
 import { useCopy } from '~/composables/useCopy'
 import { useOpenApiSchema } from '~/composables/useOpenApiSchema'
 
-const { schema, url } = useOpenApiSchema()
+const toast = useToast()
+const { copyContent } = useCopy()
+const { copy } = useClipboard()
 
-const config = useRuntimeConfig()
-// const baseURL = config.public.apiHost
-const baseApiUrl = config.public.apiUrl
+const {
+  schema,
+  isLoading,
+  loadSchema
+} = useOpenApiSchema()
+
+const swaggerJsonUrl = useLocalStorage('swaggerJsonUrl', '')
+const baseApiUrl = useLocalStorage('baseApiUrl', '')
+const swaggerJsonUrlInput = ref(swaggerJsonUrl.value || '')
+const baseApiUrlInput = ref(baseApiUrl.value || '')
+
+async function storeUrls() {
+  baseApiUrlInput.value = baseApiUrlInput.value.trim().replace(/\/+$/, '')
+  swaggerJsonUrlInput.value = swaggerJsonUrlInput.value.trim()
+
+  if (!swaggerJsonUrlInput.value || !baseApiUrlInput.value) {
+    toast.add({
+      title: 'Error',
+      color: 'error',
+      duration: 2000
+    })
+    return
+  }
+  const ok = await loadSchema(swaggerJsonUrlInput.value)
+  if (ok) {
+    swaggerJsonUrl.value = swaggerJsonUrlInput.value
+    baseApiUrl.value = baseApiUrlInput.value
+    toast.add({
+      title: 'Fetched',
+      color: 'success',
+      duration: 2000
+    })
+  }
+}
 
 // const { data: spec } = await useFetch<IApiSpec>(`${baseURL}/docs?api-docs.json`)
 const title = computed(() => schema.value?.info?.title)
@@ -18,12 +51,8 @@ const description = computed(() => schema.value?.info?.description)
 const components = computed(() => schema.value?.components)
 const securitySchemes = computed(() => schema.value?.components?.securitySchemes)
 
-const toast = useToast()
-const { copyContent } = useCopy()
-const { copy } = useClipboard()
-
 function copyUrl() {
-  const url = `${baseApiUrl}${selectedItem.value?.url ?? ''}`
+  const url = `${baseApiUrl.value}${selectedItem.value?.url ?? ''}`
 
   copy(url)
   toast.add({
@@ -197,144 +226,189 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
 </script>
 
 <template>
-  <UPage>
-    <template #left>
-      <UPageAside>
-        <ContentNavigation
-          :navigation="endpointNavigation"
-          :schemas="schemaNavigation"
-          :badge-color="badgeColor"
-          :selected-operation-id="selectedItem?.operationId"
-          @select="onSelect"
-        />
-      </UPageAside>
-    </template>
-
-    <template #default>
-      <UPageHeader
-        :title="title"
-        :description="description"
-        :headline="url"
-      />
-      <UPageBody>
-        <UPageBody v-if="selectedItem">
-          <UCard>
-            <template #header>
-              <div
-                v-if="selectedItem.type === 'endpoint'"
-                class="flex items-center justify-between"
+  <div>
+    <ClientOnly>
+      <UPage v-if="!swaggerJsonUrl || !baseApiUrl || !schema">
+        <UPageHero
+          title="Initial config"
+          headline="Storing in browser"
+          orientation="horizontal"
+        >
+          <template #body>
+            <div class="flex flex-col gap-6">
+              <UFormField
+                label="Swagger json url"
+                help="Full url to your docs.json file"
+                size="xl"
+                required
               >
-                <UBadge :color="badgeColor(selectedItem.method)">
-                  {{ selectedItem.method.toUpperCase() }}
-                </UBadge>
-                <code
-                  class="text-sm font-mono text-muted-foreground cursor-pointer"
-                  @click="copyUrl"
+                <UInput
+                  v-model="swaggerJsonUrlInput"
+                  placeholder="https://example.com/docs?api-docs.json"
+                  class="w-full"
+                />
+              </UFormField>
+              <UFormField
+                label="API url"
+                help="Full url of your API-host"
+                size="xl"
+                required
+              >
+                <UInput
+                  v-model="baseApiUrlInput"
+                  placeholder="https://example.com/api/v1"
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+            <UButton
+              label="Submit"
+              class="mt-2"
+              :loading="isLoading"
+              loading-icon="i-lucide-loader"
+              @click="storeUrls"
+            />
+          </template>
+        </UPageHero>
+      </UPage>
+      <UPage v-else>
+        <template #left>
+          <UPageAside>
+            <ContentNavigation
+              :navigation="endpointNavigation"
+              :schemas="schemaNavigation"
+              :badge-color="badgeColor"
+              :selected-operation-id="selectedItem?.operationId"
+              @select="onSelect"
+            />
+          </UPageAside>
+        </template>
+
+        <template #default>
+          <UPageHeader
+            :title="title"
+            :description="description"
+            :headline="swaggerJsonUrl"
+          />
+          <UPageBody v-if="selectedItem">
+            <UCard>
+              <template #header>
+                <div
+                  v-if="selectedItem.type === 'endpoint'"
+                  class="flex items-center justify-between"
                 >
-                  {{ baseApiUrl }}{{ selectedItem.url }}
-                </code>
-              </div>
-              <div
-                v-else-if="selectedItem.type === 'schema'"
-                class="text-sm font-semibold text-primary"
-              >
-                <code class="font-mono text-xl">{{ selectedItem.name }}</code>
-              </div>
-            </template>
+                  <UBadge :color="badgeColor(selectedItem.method)">
+                    {{ selectedItem.method.toUpperCase() }}
+                  </UBadge>
+                  <code
+                    class="text-sm font-mono text-muted-foreground cursor-pointer"
+                    @click="copyUrl"
+                  >
+                    {{ baseApiUrl }}{{ selectedItem.url }}
+                  </code>
+                </div>
+                <div
+                  v-else-if="selectedItem.type === 'schema'"
+                  class="text-sm font-semibold text-primary"
+                >
+                  <code class="font-mono text-xl">{{ selectedItem.name }}</code>
+                </div>
+              </template>
 
-            <div v-if="selectedItem.type === 'endpoint'">
-              <p class="mt-4 text-muted-foreground">
-                {{ selectedItem.summary || 'No summary provided.' }}
-              </p>
-              <p
-                v-if="selectedItem.description"
-                class="mt-4 text-muted-foreground"
-                v-html="selectedItem.description"
-              />
+              <div v-if="selectedItem.type === 'endpoint'">
+                <p class="mt-4 text-muted-foreground">
+                  {{ selectedItem.summary || 'No summary provided.' }}
+                </p>
+                <p
+                  v-if="selectedItem.description"
+                  class="mt-4 text-muted-foreground"
+                  v-html="selectedItem.description"
+                />
 
-              <div class="mt-6 space-y-4">
-                <div v-if="getSecurity(selectedItem.operationId)">
-                  <USeparator label="Security" />
-                  <div class="space-y-1 mt-2">
-                    <div
-                      v-for="(scheme, key) in securitySchemes"
-                      :key="key"
-                      class="border border-default bg-muted/10 dark:bg-muted/20 rounded p-3"
-                    >
-                      <div class="flex justify-between items-center">
-                        <div class="text-sm font-semibold text-muted-foreground">
-                          {{ key }}
+                <div class="mt-6 space-y-4">
+                  <div v-if="getSecurity(selectedItem.operationId)">
+                    <USeparator label="Security" />
+                    <div class="space-y-1 mt-2">
+                      <div
+                        v-for="(scheme, key) in securitySchemes"
+                        :key="key"
+                        class="border border-default bg-muted/10 dark:bg-muted/20 rounded p-3"
+                      >
+                        <div class="flex justify-between items-center">
+                          <div class="text-sm font-semibold text-muted-foreground">
+                            {{ key }}
+                          </div>
+                          <UBadge
+                            size="md"
+                            variant="soft"
+                          >
+                            {{ scheme.type }} {{ scheme.scheme ? `(${scheme.scheme})` : '' }}
+                          </UBadge>
                         </div>
-                        <UBadge
-                          size="md"
-                          variant="soft"
+                        <p
+                          v-if="scheme.description"
+                          class="text-xs text-muted mt-1"
                         >
-                          {{ scheme.type }} {{ scheme.scheme ? `(${scheme.scheme})` : '' }}
-                        </UBadge>
+                          {{ scheme.description }}
+                        </p>
+                        <p
+                          v-if="scheme.name && scheme.in"
+                          class="text-xs text-muted"
+                        >
+                          <code class="font-mono">{{ scheme.name }}</code> in <code class="font-mono">{{ scheme.in }}</code>
+                        </p>
                       </div>
-                      <p
-                        v-if="scheme.description"
-                        class="text-xs text-muted mt-1"
-                      >
-                        {{ scheme.description }}
-                      </p>
-                      <p
-                        v-if="scheme.name && scheme.in"
-                        class="text-xs text-muted"
-                      >
-                        <code class="font-mono">{{ scheme.name }}</code> in <code class="font-mono">{{ scheme.in }}</code>
-                      </p>
                     </div>
                   </div>
-                </div>
 
-                <div class="py-2">
-                  <RequestParametersList :parameters="getParameters(selectedItem.operationId)" />
-                </div>
+                  <div class="py-2">
+                    <RequestParametersList :parameters="getParameters(selectedItem.operationId)" />
+                  </div>
 
-                <div class="py-2">
-                  <RequestBodyCard
-                    v-if="getRequestBodySchema(selectedItem.operationId)"
-                    :schema="getRequestBodySchema(selectedItem.operationId)"
-                  />
-                </div>
+                  <div class="py-2">
+                    <RequestBodyCard
+                      v-if="getRequestBodySchema(selectedItem.operationId)"
+                      :schema="getRequestBodySchema(selectedItem.operationId)"
+                    />
+                  </div>
 
-                <div class="py-2">
-                  <ResponseExampleCard
-                    v-if="components"
-                    :method="getMethodConfig(selectedItem.operationId)"
-                    :components="components"
-                  />
+                  <div class="py-2">
+                    <ResponseExampleCard
+                      v-if="components"
+                      :method="getMethodConfig(selectedItem.operationId)"
+                      :components="components"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div v-else-if="selectedItem.type === 'schema'">
-              <SchemaDetailCard
-                :schema="selectedItem.schema"
-                :components="components"
-              />
-            </div>
-          </UCard>
-        </UPageBody>
-      </upagebody>
-    </template>
+              <div v-else-if="selectedItem.type === 'schema'">
+                <SchemaDetailCard
+                  :schema="selectedItem.schema"
+                  :components="components"
+                />
+              </div>
+            </UCard>
+          </UPageBody>
+        </template>
 
-    <template #right>
-      <UPageAside>
-        <div class="max-w-6xl w-full">
-          <h1
-            v-if="selectedItem?.type === 'schema'"
-            class="text-3xl font-bold"
-          >
-            <pre
-              class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
-              title="Click to copy example"
-              @click="copyContent(JSON.stringify(example, null, 2))"
-            >{{ JSON.stringify(example, null, 2) }}</pre>
-          </h1>
-        </div>
-      </UPageAside>
-    </template>
-  </UPage>
+        <template #right>
+          <UPageAside>
+            <div class="max-w-6xl w-full">
+              <h1
+                v-if="selectedItem?.type === 'schema'"
+                class="text-3xl font-bold"
+              >
+                <pre
+                  class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
+                  title="Click to copy example"
+                  @click="copyContent(JSON.stringify(example, null, 2))"
+                >{{ JSON.stringify(example, null, 2) }}</pre>
+              </h1>
+            </div>
+          </UPageAside>
+        </template>
+      </UPage>
+    </ClientOnly>
+  </div>
 </template>
