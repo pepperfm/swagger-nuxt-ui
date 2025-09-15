@@ -9,7 +9,7 @@ defineProps<{
 
 const { copyContent } = useCopy()
 
-const getBadgeColor = (prop: any): 'error' | 'warning' | 'info' => {
+function getBadgeColor(prop: any): 'error' | 'warning' | 'info' {
   return prop.required
     ? 'error'
     : prop.nullable ? 'warning' : 'info'
@@ -142,7 +142,8 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
                       size="xs"
                       variant="ghost"
                       icon="i-lucide-chevron-right"
-                      :class="{ 'rotate-90': open, 'transition-transform': true }"
+                      class="transition-transform"
+                      :class="{ 'rotate-90': open }"
                       @click="open = !open"
                     />
                     <span class="text-xs text-muted">Items</span>

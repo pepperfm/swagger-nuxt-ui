@@ -10,20 +10,28 @@ const props = defineProps<{
 const { copyContent } = useCopy()
 
 function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
-  if (!schema || typeof schema !== 'object') return null
+  if (!schema || typeof schema !== 'object') {
+    return null
+  }
 
-  if (schema.example !== undefined) return schema.example
-  if (schema.default !== undefined) return schema.default
+  if (schema.example !== undefined) {
+    return schema.example
+  }
+  if (schema.default !== undefined) {
+    return schema.default
+  }
 
   if (schema.$ref) {
     const ref = schema.$ref.replace('#/components/schemas/', '')
     const resolved = components.schemas?.[ref]
-    if (resolved) return generateExampleFromSchema(resolved, components)
+    if (resolved) {
+      return generateExampleFromSchema(resolved, components)
+    }
   }
 
   if (schema.allOf) {
     const resolvedSchemas = schema.allOf.map((part: any) =>
-      generateExampleFromSchema(part, components)
+      generateExampleFromSchema(part, components),
     )
 
     const merged = Object.assign({}, ...resolvedSchemas)
@@ -32,15 +40,19 @@ function generateExampleFromSchema(schema: any, components: Record<string, any> 
       return {
         status: 'OK',
         message: '',
-        ...merged
+        ...merged,
       }
     }
 
     return merged
   }
 
-  if (schema.oneOf) return generateExampleFromSchema(schema.oneOf[0], components)
-  if (schema.anyOf) return generateExampleFromSchema(schema.anyOf[0], components)
+  if (schema.oneOf) {
+    return generateExampleFromSchema(schema.oneOf[0], components)
+  }
+  if (schema.anyOf) {
+    return generateExampleFromSchema(schema.anyOf[0], components)
+  }
 
   switch (schema.type) {
     case 'object': {
@@ -66,11 +78,15 @@ function generateExampleFromSchema(schema: any, components: Record<string, any> 
 }
 
 const examples = computed<ResponseExample[]>(() => {
-  if (!props.method?.responses) return []
+  if (!props.method?.responses) {
+    return []
+  }
 
   return Object.entries(props.method.responses).map(([status, response]) => {
     const content = response.content?.['application/json']
-    if (!content) return null
+    if (!content) {
+      return null
+    }
 
     const schema = content.schema
     const explicitExample = content.example || schema?.example
@@ -78,16 +94,22 @@ const examples = computed<ResponseExample[]>(() => {
     return {
       status,
       description: response.description,
-      example: explicitExample ?? generateExampleFromSchema(schema, props.components ?? {})
+      example: explicitExample ?? generateExampleFromSchema(schema, props.components ?? {}),
     }
   }).filter((item): item is ResponseExample => item !== null)
 })
 
-const getBadgeColor = (status: string): 'primary' | 'warning' | 'error' => {
-  const code = parseInt(status)
-  if (code >= 200 && code < 300) return 'primary'
-  if (code >= 400 && code < 500) return 'warning'
-  if (code >= 500) return 'error'
+function getBadgeColor(status: string): 'primary' | 'warning' | 'error' {
+  const code = Number.parseInt(status)
+  if (code >= 200 && code < 300) {
+    return 'primary'
+  }
+  if (code >= 400 && code < 500) {
+    return 'warning'
+  }
+  if (code >= 500) {
+    return 'error'
+  }
   return 'primary'
 }
 
@@ -118,7 +140,7 @@ watch(() => props.method, () => {
     <div
       v-for="item in examples"
       v-show="item.status === selectedStatus"
-      :key="item.status + '-example'"
+      :key="`${item.status}-example`"
     >
       <p class="text-md text-muted-foreground mb-1">
         {{ item.description }}

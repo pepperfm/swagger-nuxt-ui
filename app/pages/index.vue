@@ -1,7 +1,13 @@
 <script setup lang="ts">
+import type {
+  HttpMethod,
+  IMethod,
+  INavigationGroup,
+  IParameter,
+  PathsObject,
+} from '~/types/types'
 import { useClipboard, useLocalStorage } from '@vueuse/core'
 import { computed } from 'vue'
-import type { HttpMethod, IMethod, INavigationGroup, IParameter, PathsObject } from '~/types/types'
 import { generateExampleFromSchema } from '~/composables/schemaExample'
 import { useCopy } from '~/composables/useCopy'
 import { useOpenApiSchema } from '~/composables/useOpenApiSchema'
@@ -13,7 +19,7 @@ const { copy } = useClipboard()
 const {
   schema,
   isLoading,
-  loadSchema
+  loadSchema,
 } = useOpenApiSchema()
 
 const swaggerJsonUrl = useLocalStorage('swaggerJsonUrl', '')
@@ -29,7 +35,7 @@ async function storeUrls() {
     toast.add({
       title: 'Error',
       color: 'error',
-      duration: 2000
+      duration: 2000,
     })
     return
   }
@@ -40,7 +46,7 @@ async function storeUrls() {
     toast.add({
       title: 'Fetched',
       color: 'success',
-      duration: 2000
+      duration: 2000,
     })
   }
 }
@@ -60,7 +66,7 @@ function copyUrl() {
     description: 'Endpoint URL copied to clipboard.',
     color: 'success',
     icon: 'i-lucide-copy',
-    duration: 2000
+    duration: 2000,
   })
 }
 
@@ -78,7 +84,7 @@ const endpointGroups: ComputedRef<Record<string, INavigationGroup>> = computed((
         groups[tag] = {
           _path: `#tag-${tag}`,
           title: tag,
-          children: []
+          children: [],
         }
       }
       groups[tag].children.push({
@@ -86,7 +92,7 @@ const endpointGroups: ComputedRef<Record<string, INavigationGroup>> = computed((
         title: typedConfig.summary || 'No title provided',
         description: typedConfig.description,
         method: typedMethod,
-        operationId: typedConfig.operationId
+        operationId: typedConfig.operationId,
       })
     })
   })
@@ -101,8 +107,8 @@ const schemaNavigation = computed((): INavigationGroup => ({
     _path: `#schema-${name}`,
     title: name,
     method: '',
-    operationId: `schema-${name}`
-  }))
+    operationId: `schema-${name}`,
+  })),
 }))
 
 function getMethodConfig(operationId: string): IMethod | undefined {
@@ -118,28 +124,34 @@ function getMethodConfig(operationId: string): IMethod | undefined {
 
 function getParameters(operationId: string) {
   const config = getMethodConfig(operationId)
-  if (!config?.parameters) return []
+  if (!config?.parameters) {
+    return []
+  }
 
   return config.parameters.map((param: IParameter) => ({
     name: param.name,
     in: param.in,
     type: param.schema?.type ?? 'any',
     required: param.required ?? false,
-    description: param.description ?? ''
+    description: param.description ?? '',
   }))
 }
 
 function getRequestBodySchema(operationId: string) {
   const config = getMethodConfig(operationId)
   const body = config?.requestBody
-  if (!body) return null
+  if (!body) {
+    return null
+  }
 
   const json = body.content?.['application/json']
     ?? body.content?.['multipart/form-data']
     ?? body.content?.['application/x-www-form-urlencoded']
 
   const schema = json?.schema
-  if (!schema || !schema.properties) return null
+  if (!schema || !schema.properties) {
+    return null
+  }
 
   return schema.properties
 }
@@ -147,7 +159,9 @@ function getRequestBodySchema(operationId: string) {
 function getSecurity(operationId: string): string | null {
   const config = getMethodConfig(operationId)
   const security = (config as any)?.security
-  if (!security || !Array.isArray(security)) return null
+  if (!security || !Array.isArray(security)) {
+    return null
+  }
 
   return Object.keys(security[0] || {})[0] || null
 }
@@ -189,7 +203,7 @@ function onSelect(item: {
           url,
           summary: methodConfig.summary,
           description: item.description,
-          operationId: item.operationId
+          operationId: item.operationId,
         }
         return
       }
@@ -200,7 +214,7 @@ function onSelect(item: {
       selectedItem.value = {
         type: 'schema',
         name: item.title,
-        schema
+        schema,
       }
     }
   }

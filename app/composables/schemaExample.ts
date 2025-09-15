@@ -1,13 +1,21 @@
 export function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
-  if (!schema || typeof schema !== 'object') return null
+  if (!schema || typeof schema !== 'object') {
+    return null
+  }
 
-  if (schema.example !== undefined) return schema.example
-  if (schema.default !== undefined) return schema.default
+  if (schema.example !== undefined) {
+    return schema.example
+  }
+  if (schema.default !== undefined) {
+    return schema.default
+  }
 
   if (schema.$ref) {
     const ref = schema.$ref.replace('#/components/schemas/', '')
     const resolved = components?.schemas?.[ref]
-    if (resolved) return generateExampleFromSchema(resolved, components)
+    if (resolved) {
+      return generateExampleFromSchema(resolved, components)
+    }
   }
 
   if (schema.allOf) {

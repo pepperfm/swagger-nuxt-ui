@@ -25,12 +25,14 @@ function copyContent(content: string) {
   toast.add({
     title: 'Copied!',
     color: 'success',
-    icon: 'i-lucide-copy'
+    icon: 'i-lucide-copy',
   })
 }
 
 function renderItems(items: any, level = 0) {
-  if (!items) return null
+  if (!items) {
+    return null
+  }
 
   const lines: string[] = []
 
@@ -57,9 +59,15 @@ function renderItems(items: any, level = 0) {
 
   if (items.minLength !== undefined || items.maxLength !== undefined) {
     let len = ''
-    if (items.minLength !== undefined) len += `Min length: ${items.minLength}`
-    if (items.minLength !== undefined && items.maxLength !== undefined) len += ' · '
-    if (items.maxLength !== undefined) len += `Max length: ${items.maxLength}`
+    if (items.minLength !== undefined) {
+      len += `Min length: ${items.minLength}`
+    }
+    if (items.minLength !== undefined && items.maxLength !== undefined) {
+      len += ' · '
+    }
+    if (items.maxLength !== undefined) {
+      len += `Max length: ${items.maxLength}`
+    }
     lines.push(len)
   }
 

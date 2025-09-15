@@ -11,19 +11,19 @@ export function useCopy() {
         title: 'Copied!',
         color: 'success',
         icon: 'i-lucide-copy',
-        duration: 2000
+        duration: 2000,
       })
     } catch {
       toast.add({
         title: 'Copy failed',
         color: 'error',
         icon: 'i-lucide-alert-triangle',
-        duration: 3000
+        duration: 3000,
       })
     }
   }
 
   return {
-    copyContent
+    copyContent,
   }
 }

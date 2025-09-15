@@ -6,11 +6,11 @@ export default defineNuxtConfig({
     '@nuxt/fonts',
     '@nuxt/icon',
     // '@nuxt/content',
-    '@nuxt/scripts'
+    '@nuxt/scripts',
   ],
 
   devtools: {
-    enabled: true
+    enabled: true,
   },
 
   css: ['~/assets/css/main.css'],
@@ -18,16 +18,16 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiHost: process.env.NUXT_BASE_API_HOST ?? 'http://localhost',
-      apiUrl: process.env.NUXT_BASE_API_URL ?? 'http://localhost/api'
-    }
+      apiUrl: process.env.NUXT_BASE_API_URL ?? 'http://localhost/api',
+    },
   },
 
   routeRules: {
-    '/': { prerender: true }
+    '/': { prerender: true },
   },
 
   future: {
-    compatibilityVersion: 4
+    compatibilityVersion: 4,
   },
 
   compatibilityDate: '2025-01-15',
@@ -36,9 +36,9 @@ export default defineNuxtConfig({
     config: {
       stylistic: {
         commaDangle: 'never',
-        braceStyle: '1tbs'
-      }
-    }
+        braceStyle: '1tbs',
+      },
+    },
   },
 
   // content: {
@@ -62,6 +62,6 @@ export default defineNuxtConfig({
   //
   uiPro: {
   //   content: true,
-    mdc: true
-  }
+    mdc: true,
+  },
 })
