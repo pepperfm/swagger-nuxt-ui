@@ -1,8 +1,11 @@
-interface INavigationItem {
+export type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch'
+export type NavigationMethod = HttpMethod | ''
+
+export interface INavigationItem {
   _path: string
-  title: ?string
-  description: ?string
-  method: HttpMethod
+  title: string
+  description?: string
+  method: NavigationMethod
   operationId: string
 }
 
@@ -12,7 +15,7 @@ export interface INavigationGroup {
   children: INavigationItem[]
 }
 
-interface IParameter {
+export interface IParameter {
   name: string
   in: string
   type: string
@@ -24,7 +27,7 @@ interface IParameter {
   }
 }
 
-interface IResponseContent {
+export interface IResponseContent {
   schema?: {
     type?: string
     properties?: Record<string, any>
@@ -33,7 +36,7 @@ interface IResponseContent {
   example?: any
 }
 
-interface IResponse {
+export interface IResponse {
   description: string
   content?: {
     [contentType: string]: IResponseContent
@@ -41,9 +44,9 @@ interface IResponse {
 }
 
 export interface IMethod {
-  tags: string[]
-  summary: ?string
-  description: ?string
+  tags?: string[]
+  summary?: string | null
+  description?: string | null
   operationId: string
   parameters?: IParameter[]
   requestBody?: {
@@ -57,14 +60,14 @@ export interface IMethod {
   responses: {
     [statusCode: string]: IResponse
   }
+  security?: Array<Record<string, unknown>>
 }
 
-type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch'
 export interface PathsObject {
   [path: string]: Partial<Record<HttpMethod, IMethod>>
 }
 
-interface ResponseExample {
+export interface ResponseExample {
   status: string
   description: string
   example: Record<string, any>

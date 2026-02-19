@@ -1,6 +1,9 @@
 import antfu from '@antfu/eslint-config'
 
 export default antfu({
+  ignores: [
+    'example.json',
+  ],
   vue: true,
   rules: {
     'unicorn/error-message': 'off',

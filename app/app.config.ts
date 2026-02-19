@@ -1,5 +1,9 @@
 export default defineAppConfig({
-  uiPro: {
+  ui: {
+    colors: {
+      primary: 'green',
+      neutral: 'slate',
+    },
     page: {
       slots: {
         root: 'flex flex-col lg:grid lg:grid-cols-12 lg:gap-6',
@@ -7,12 +11,6 @@ export default defineAppConfig({
         center: 'lg:col-span-6',
         right: 'lg:col-span-4 order-first lg:order-last',
       },
-    },
-  },
-  ui: {
-    colors: {
-      primary: 'green',
-      neutral: 'slate',
     },
   },
 })

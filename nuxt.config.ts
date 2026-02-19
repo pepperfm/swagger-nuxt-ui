@@ -1,12 +1,10 @@
+import process from 'node:process'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
-    '@nuxt/ui-pro',
-    '@nuxt/fonts',
-    '@nuxt/icon',
-    // '@nuxt/content',
-    '@nuxt/scripts',
+    '@nuxt/ui',
   ],
 
   devtools: {
@@ -24,10 +22,6 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/': { prerender: true },
-  },
-
-  future: {
-    compatibilityVersion: 4,
   },
 
   compatibilityDate: '2025-01-15',
@@ -60,8 +54,8 @@ export default defineNuxtConfig({
   //   },
   // },
   //
-  uiPro: {
-  //   content: true,
+  ui: {
     mdc: true,
+    fonts: false,
   },
 })

@@ -61,7 +61,7 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
           <UPageCard class="my-2">
             <div
               class="flex justify-between items-center cursor-pointer"
-              @click="copyContent(name)"
+              @click="copyContent(String(name))"
             >
               <div class="font-mono text-sm">
                 {{ name }}
@@ -144,7 +144,6 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
                       icon="i-lucide-chevron-right"
                       class="transition-transform"
                       :class="{ 'rotate-90': open }"
-                      @click="open = !open"
                     />
                     <span class="text-xs text-muted">Items</span>
                   </div>

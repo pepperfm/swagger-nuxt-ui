@@ -1,49 +1,56 @@
-# Nuxt Starter Template
+# Swagger Nuxt UI
 
-[![Nuxt UI Pro](https://img.shields.io/badge/Made%20with-Nuxt%20UI%20Pro-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com/pro)
-[![Deploy to NuxtHub](https://img.shields.io/badge/Deploy%20to-NuxtHub-00DC82?logo=nuxt&labelColor=020420)](https://hub.nuxt.com/new?repo=nuxt-ui-pro/starter)
+> Interactive OpenAPI/Swagger documentation viewer built with Nuxt 4 and Nuxt UI 4.
 
-This Nuxt starter lets you get started with [Nuxt UI Pro](https://ui.nuxt.com/pro) quickly.
+Swagger Nuxt UI loads an OpenAPI JSON document from a URL and renders endpoints, request details, response examples, and schema references in a clean navigation-first interface.
 
-- [Live demo](https://ui-pro-starter.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/getting-started/installation/pro/nuxt)
-
-<a href="https://ui-pro-starter.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://assets.hub.nuxt.com/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJodHRwczovL3VpLXByby1zdGFydGVyLm51eHQuZGV2IiwiaWF0IjoxNzM5NDYzMzk4fQ.XLzPkSW6nRbPW07QO1RkMwz_RAPA4KfeyrWrK3li9YI.jpg?theme=dark">
-    <source media="(prefers-color-scheme: light)" srcset="https://assets.hub.nuxt.com/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJodHRwczovL3VpLXByby1zdGFydGVyLm51eHQuZGV2IiwiaWF0IjoxNzM5NDYzMzk4fQ.XLzPkSW6nRbPW07QO1RkMwz_RAPA4KfeyrWrK3li9YI.jpg?theme=light">
-    <img alt="Nuxt Starter Template" src="https://assets.hub.nuxt.com/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJodHRwczovL3VpLXByby1zdGFydGVyLm51eHQuZGV2IiwiaWF0IjoxNzM5NDYzMzk4fQ.XLzPkSW6nRbPW07QO1RkMwz_RAPA4KfeyrWrK3li9YI.jpg">
-  </picture>
-</a>
-
-## Setup
-
-Make sure to install the dependencies:
+## Quick Start
 
 ```bash
 pnpm install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
 pnpm dev
 ```
 
-## Production
+Open `http://localhost:3000` and provide:
+- `Swagger JSON URL`
+- `Base API URL`
 
-Build the application for production:
+## Key Features
 
-```bash
-pnpm build
+- **Schema Loader**: fetches remote OpenAPI JSON via `/api/swagger`.
+- **Endpoint Navigation**: groups operations by tags for fast browsing.
+- **Request/Response View**: shows parameters, request body, auth, and example responses.
+- **Schema Browser**: navigates `components.schemas` definitions.
+- **Developer UX**: local URL persistence and one-click endpoint URL copy.
+
+## Example
+
+```text
+Swagger JSON URL: https://petstore3.swagger.io/api/v3/openapi.json
+Base API URL:     https://petstore3.swagger.io/api/v3
 ```
 
-Locally preview production build:
+After loading, select an operation from the left navigation and copy the full endpoint URL from the details panel.
 
-```bash
-pnpm preview
-```
+---
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/getting-started.md) | Prerequisites, install, run, and first load |
+| [Architecture](docs/architecture.md) | Layered structure and dependency rules |
+| [API Reference](docs/api.md) | Internal API and data flow |
+| [Configuration](docs/configuration.md) | Runtime variables and config files |
+| [Deployment](docs/deployment.md) | Build, preview, Docker, and VPS workflow |
+| [Contributing](docs/contributing.md) | Quality checks and contribution process |
+
+## AI Context
+
+- Project description: `.ai-factory/DESCRIPTION.md`
+- Architecture guidelines: `.ai-factory/ARCHITECTURE.md`
+- Project map: `AGENTS.md`
+
+## License
+
+No license file is currently defined in this repository.

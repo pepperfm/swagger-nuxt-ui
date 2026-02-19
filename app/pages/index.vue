@@ -3,6 +3,7 @@ import type {
   HttpMethod,
   IMethod,
   INavigationGroup,
+  INavigationItem,
   IParameter,
   PathsObject,
 } from '~/types/types'
@@ -57,19 +58,6 @@ const description = computed(() => schema.value?.info?.description)
 const components = computed(() => schema.value?.components)
 const securitySchemes = computed(() => schema.value?.components?.securitySchemes)
 
-function copyUrl() {
-  const url = `${baseApiUrl.value}${selectedItem.value?.url ?? ''}`
-
-  copy(url)
-  toast.add({
-    title: 'Copied!',
-    description: 'Endpoint URL copied to clipboard.',
-    color: 'success',
-    icon: 'i-lucide-copy',
-    duration: 2000,
-  })
-}
-
 const paths = computed(() => schema.value?.paths as PathsObject)
 const schemas = computed(() => schema.value?.components?.schemas ?? {})
 
@@ -90,7 +78,7 @@ const endpointGroups: ComputedRef<Record<string, INavigationGroup>> = computed((
       groups[tag].children.push({
         _path: `#${method}-${url}`,
         title: typedConfig.summary || 'No title provided',
-        description: typedConfig.description,
+        description: typedConfig.description ?? undefined,
         method: typedMethod,
         operationId: typedConfig.operationId,
       })
@@ -158,12 +146,17 @@ function getRequestBodySchema(operationId: string) {
 
 function getSecurity(operationId: string): string | null {
   const config = getMethodConfig(operationId)
-  const security = (config as any)?.security
+  const security = config?.security
   if (!security || !Array.isArray(security)) {
     return null
   }
 
-  return Object.keys(security[0] || {})[0] || null
+  const firstSecurity = security[0]
+  if (!firstSecurity) {
+    return null
+  }
+
+  return Object.keys(firstSecurity)[0] || null
 }
 
 const selectedItem = ref<
@@ -179,48 +172,66 @@ const selectedItem = ref<
     type: 'schema'
     name: string
     schema: Record<string, any>
+    operationId: string
   }
   | null
 >(null)
 
-function onSelect(item: {
-  _path: string
-  title?: string
-  description?: string
-  method?: string
-  operationId: string
-}) {
+function onSelect(item: INavigationItem) {
   const paths = schema.value?.paths as PathsObject
-  const schemas = schema.value?.components?.schemas || {}
+  const localSchemas = schema.value?.components?.schemas || {}
 
   if (item.method?.length) {
     for (const [url, methods] of Object.entries(paths)) {
-      const methodConfig = methods?.[item.method as keyof typeof methods]
+      const methodConfig = methods?.[item.method as HttpMethod]
       if (methodConfig?.operationId === item.operationId) {
         selectedItem.value = {
           type: 'endpoint',
           method: item.method,
           url,
-          summary: methodConfig.summary,
-          description: item.description,
+          summary: methodConfig.summary ?? undefined,
+          description: item.description ?? methodConfig.description ?? undefined,
           operationId: item.operationId,
         }
         return
       }
     }
   } else {
-    const schema = schemas[item.title]
-    if (schema) {
+    const schemaName = item.title
+    const currentSchema = localSchemas[schemaName]
+    if (currentSchema) {
       selectedItem.value = {
         type: 'schema',
-        name: item.title,
-        schema,
+        name: schemaName,
+        schema: currentSchema,
+        operationId: item.operationId,
       }
     }
   }
 }
 
-const example = computed(() => generateExampleFromSchema(selectedItem.value?.schema, components.value ?? {}))
+const example = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'schema') {
+    return null
+  }
+  return generateExampleFromSchema(selectedItem.value.schema, components.value ?? {})
+})
+
+function copyUrl() {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
+    return
+  }
+  const url = `${baseApiUrl.value}${selectedItem.value.url}`
+
+  copy(url)
+  toast.add({
+    title: 'Copied!',
+    description: 'Endpoint URL copied to clipboard.',
+    color: 'success',
+    icon: 'i-lucide-copy',
+    duration: 2000,
+  })
+}
 
 function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'error' | 'info' {
   switch (method.toLowerCase()) {

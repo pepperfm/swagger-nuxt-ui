@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HttpMethod, INavigationGroup } from '~/types/types'
+import type { HttpMethod, INavigationGroup, INavigationItem } from '~/types/types'
 
 defineProps<{
   navigation: INavigationGroup[]
@@ -8,7 +8,7 @@ defineProps<{
   selectedOperationId?: string
 }>()
 defineEmits<{
-  (e: 'select', item: { _path: string, title: string, method: string, operationId: string }): void
+  (e: 'select', item: INavigationItem): void
 }>()
 </script>
 
@@ -43,7 +43,7 @@ defineEmits<{
               >
                 <span class="group-hover">{{ child.title }}</span>
                 <UBadge
-                  :color="badgeColor(child.method)"
+                  :color="badgeColor(child.method as HttpMethod)"
                   size="sm"
                   class="uppercase"
                 >
