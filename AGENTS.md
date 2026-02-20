@@ -31,8 +31,8 @@ app/
 lib/
 ├── index.ts                       # Public package API
 ├── types.ts                       # Public OpenAPI contracts
-├── components/                    # Library-owned UI components (SwaggerViewer, EndpointRequestCard, ParameterInputField, cards/navigation)
-├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator + parameter resolver)
+├── components/                    # Library-owned UI components (SwaggerViewer, request emulator cards/editors, navigation, schema cards)
+├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator + parameter/body resolvers)
 └── styles/swagger-ui.css          # Library stylesheet
 
 bridge-viewer/
@@ -86,8 +86,12 @@ docs/
 | `vite.viewer.config.ts` | Standalone viewer bundle configuration |
 | `lib/index.ts` | Library public API exports |
 | `lib/components/EndpointRequestCard.vue` | Endpoint request emulator UI (right sidebar) |
+| `lib/components/RequestBodyEditor.vue` | Dual-mode request body editor (`JSON` / `Form`) |
+| `lib/components/RequestBodyFormFields.vue` | Typed field renderer for request body form mode |
 | `lib/components/ParameterInputField.vue` | Typed parameter input renderer (Nuxt UI control mapping) |
 | `lib/composables/useRequestEmulator.ts` | Request state, validation, and execution flow |
+| `lib/composables/requestBodyInputResolver.ts` | OpenAPI requestBody schema -> form input map resolver |
+| `lib/composables/requestBodyFormState.ts` | Request body form state init/hydration/serialization helpers |
 | `lib/composables/requestParameterInputResolver.ts` | OpenAPI parameter schema -> input control/value resolver |
 | `bridge-viewer/main.ts` | Browser entry used by Laravel bridge page |
 | `packages/laravel-bridge/routes/swagger-ui.php` | Bridge route registration for JSON + page + assets |

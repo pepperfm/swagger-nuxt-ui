@@ -6,11 +6,19 @@ export { default as ContentNavigation } from './components/ContentNavigation.vue
 export { default as EndpointRequestCard } from './components/EndpointRequestCard.vue'
 export { default as ParameterInputField } from './components/ParameterInputField.vue'
 export { default as RequestBodyCard } from './components/RequestBodyCard.vue'
+export { default as RequestBodyEditor } from './components/RequestBodyEditor.vue'
+export { default as RequestBodyFormFields } from './components/RequestBodyFormFields.vue'
 export { default as RequestParametersList } from './components/RequestParametersList.vue'
 export { default as ResponseExampleCard } from './components/ResponseExampleCard.vue'
 export { default as SchemaDetailCard } from './components/SchemaDetailCard.vue'
 export { default as SwaggerViewer } from './components/SwaggerViewer.vue'
 
+export {
+  buildRequestBodyFromFormValues,
+  createInitialRequestBodyFormValues,
+  hydrateRequestBodyFormValues,
+} from './composables/requestBodyFormState'
+export { resolveRequestBodyFormInputs } from './composables/requestBodyInputResolver'
 export {
   applySecurityHeader,
   buildCurlCommand,
@@ -43,6 +51,10 @@ export type {
   OpenApiParameterLocation,
   OpenApiSchemaObject,
   OpenApiSecurityScheme,
+  RequestBodyEditorMode,
+  RequestBodyFormInput,
+  RequestBodyFormResolutionResult,
+  RequestBodyFormValueMap,
   RequestEmulatorAuthInput,
   RequestEmulatorExecutionError,
   RequestEmulatorExecutionState,

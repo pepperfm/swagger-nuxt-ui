@@ -8,6 +8,9 @@ import type {
   OpenApiParameterLocation,
   OpenApiSchemaObject,
   OpenApiSecurityScheme,
+  RequestBodyEditorMode,
+  RequestBodyFormInput,
+  RequestBodyFormValueMap,
   RequestEmulatorAuthInput,
   RequestEmulatorExecutionState,
   RequestEmulatorParamInput,
@@ -15,6 +18,12 @@ import type {
   RequestEmulatorValidationError,
 } from '../types'
 import { computed, ref, watch } from 'vue'
+import {
+  buildRequestBodyFromFormValues,
+  createInitialRequestBodyFormValues,
+  hydrateRequestBodyFormValues,
+} from './requestBodyFormState'
+import { resolveRequestBodyFormInputs } from './requestBodyInputResolver'
 import {
   applySecurityHeader,
   buildCurlCommand,
@@ -192,6 +201,10 @@ function parseResponseBody(text: string, contentType: string | null): {
   }
 }
 
+function isJsonContentType(contentType: string | null): boolean {
+  return typeof contentType === 'string' && contentType.toLowerCase().includes('json')
+}
+
 export function useRequestEmulator(options: UseRequestEmulatorOptions) {
   const paramInputs = ref<RequestEmulatorParamInput[]>([])
   const emittedWarnings = ref<Set<string>>(new Set())
@@ -199,7 +212,12 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     securityKey: null,
     token: '',
   })
+  const bodyEditorMode = ref<RequestBodyEditorMode>('json')
   const requestBodyText = ref('')
+  const requestBodyJsonWarning = ref<string | null>(null)
+  const requestBodyFormWarnings = ref<string[]>([])
+  const requestBodyFormInputs = ref<RequestBodyFormInput[]>([])
+  const requestBodyFormValues = ref<RequestBodyFormValueMap>({})
   const responseState = ref<RequestEmulatorExecutionState>({
     isSending: false,
     result: null,
@@ -208,12 +226,27 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
 
   const bodyMeta = computed(() => readRequestBodyContent(options.method.value))
   const hasRequestBody = computed(() => bodyMeta.value.contentType !== null)
+  const isJsonRequestBody = computed(() => isJsonContentType(bodyMeta.value.contentType))
   const groupedInputs = computed(() => ({
     path: paramInputs.value.filter(input => input.in === 'path'),
     query: paramInputs.value.filter(input => input.in === 'query'),
     header: paramInputs.value.filter(input => input.in === 'header'),
     cookie: paramInputs.value.filter(input => input.in === 'cookie'),
   }))
+
+  function emitWarningOnce(message: string, context?: Record<string, unknown>) {
+    if (emittedWarnings.value.has(message)) {
+      return
+    }
+
+    emittedWarnings.value.add(message)
+    if (context) {
+      console.warn(message, context)
+      return
+    }
+
+    console.warn(message)
+  }
 
   const pathValues = computed(() => {
     return groupedInputs.value.path.reduce<Record<string, string>>((acc, input) => {
@@ -267,7 +300,81 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     return interpolatePathParams(url, pathValues.value)
   })
 
+  function replaceFormWarnings(nextWarnings: string[]) {
+    requestBodyFormWarnings.value = [...new Set(nextWarnings)]
+  }
+
+  function syncFormFromJsonText(reason: 'init' | 'json-edit' | 'mode-switch') {
+    if (!isJsonRequestBody.value || requestBodyFormInputs.value.length === 0) {
+      requestBodyJsonWarning.value = null
+      return
+    }
+
+    const raw = requestBodyText.value.trim()
+    if (!raw) {
+      requestBodyJsonWarning.value = null
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(raw)
+      const hydrated = hydrateRequestBodyFormValues(
+        requestBodyFormInputs.value,
+        parsed,
+        requestBodyFormValues.value,
+      )
+
+      requestBodyFormValues.value = hydrated.values
+      if (hydrated.warnings.length > 0) {
+        hydrated.warnings.forEach((warning) => {
+          emitWarningOnce(warning)
+        })
+      }
+
+      replaceFormWarnings([
+        ...requestBodyFormWarnings.value.filter(warning => !warning.includes('[requestBodyFormState]')),
+        ...hydrated.warnings,
+      ])
+      requestBodyJsonWarning.value = null
+    } catch (error) {
+      requestBodyJsonWarning.value = 'Invalid JSON. Form values were kept unchanged.'
+      emitWarningOnce('[useRequestEmulator] Failed to parse request body JSON while hydrating form values', { reason, error })
+    }
+  }
+
+  function syncJsonTextFromFormValues() {
+    if (!isJsonRequestBody.value || requestBodyFormInputs.value.length === 0) {
+      return
+    }
+
+    const payload = buildRequestBodyFromFormValues(requestBodyFormInputs.value, requestBodyFormValues.value)
+    requestBodyText.value = payload === null ? '' : JSON.stringify(payload, null, 2)
+    requestBodyJsonWarning.value = null
+  }
+
   const validationErrors = computed<RequestEmulatorValidationError[]>(() => [])
+
+  const transportRequestBodyText = computed<string | null>(() => {
+    if (!hasRequestBody.value) {
+      return null
+    }
+
+    if (bodyEditorMode.value === 'form' && isJsonRequestBody.value && requestBodyFormInputs.value.length > 0) {
+      const payload = buildRequestBodyFromFormValues(requestBodyFormInputs.value, requestBodyFormValues.value)
+      if (payload === null) {
+        return null
+      }
+
+      try {
+        return JSON.stringify(payload)
+      } catch (error) {
+        emitWarningOnce('[useRequestEmulator] Failed to serialize form payload to JSON; falling back to raw body text', { error })
+      }
+    }
+
+    const raw = requestBodyText.value.trim()
+    return raw === '' ? null : raw
+  })
 
   const preparedRequest = computed<RequestEmulatorPreparedRequest | null>(() => {
     const endpoint = options.endpoint.value
@@ -283,7 +390,7 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       headers.Cookie = cookieHeader
     }
 
-    if (bodyMeta.value.contentType && requestBodyText.value.trim() !== '') {
+    if (bodyMeta.value.contentType && transportRequestBodyText.value !== null) {
       headers['Content-Type'] = bodyMeta.value.contentType
     }
 
@@ -295,14 +402,9 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     })
 
     securityResult.warnings.forEach((message) => {
-      if (emittedWarnings.value.has(message)) {
-        return
-      }
-      emittedWarnings.value.add(message)
-      console.warn('[useRequestEmulator] Security configuration warning', { message })
+      emitWarningOnce(`[useRequestEmulator] Security configuration warning: ${message}`)
     })
-
-    const bodyText = requestBodyText.value.trim() === '' ? null : requestBodyText.value
+    const bodyText = transportRequestBodyText.value
 
     const prepared: RequestEmulatorPreparedRequest = {
       url,
@@ -330,10 +432,29 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       token: '',
     }
     emittedWarnings.value = new Set()
+    bodyEditorMode.value = 'json'
+    requestBodyJsonWarning.value = null
 
     const meta = bodyMeta.value
     const baseExample = meta.example ?? generateExampleFromSchema(meta.schema, options.components.value)
     requestBodyText.value = stringifyUnknown(baseExample)
+    if (isJsonRequestBody.value) {
+      const bodyFormResolution = resolveRequestBodyFormInputs(meta.schema, options.components.value)
+      requestBodyFormInputs.value = bodyFormResolution.inputs
+      requestBodyFormValues.value = createInitialRequestBodyFormValues(bodyFormResolution.inputs)
+      replaceFormWarnings(bodyFormResolution.warnings)
+
+      bodyFormResolution.warnings.forEach((warning) => {
+        emitWarningOnce(warning)
+      })
+
+      syncFormFromJsonText('init')
+    } else {
+      requestBodyFormInputs.value = []
+      requestBodyFormValues.value = {}
+      replaceFormWarnings([])
+    }
+
     responseState.value = {
       isSending: false,
       result: null,
@@ -450,11 +571,46 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     auth.value.securityKey = value
   })
 
+  watch(
+    requestBodyFormValues,
+    () => {
+      if (bodyEditorMode.value !== 'form') {
+        return
+      }
+
+      syncJsonTextFromFormValues()
+    },
+    { deep: true },
+  )
+
+  watch(requestBodyText, () => {
+    if (bodyEditorMode.value !== 'json') {
+      return
+    }
+
+    syncFormFromJsonText('json-edit')
+  })
+
+  watch(bodyEditorMode, (mode) => {
+    if (mode === 'json') {
+      return
+    }
+
+    syncFormFromJsonText('mode-switch')
+    syncJsonTextFromFormValues()
+  })
+
   return {
     auth,
+    bodyEditorMode,
     hasRequestBody,
+    isJsonRequestBody,
     requestBodyText,
     requestBodyContentType: computed(() => bodyMeta.value.contentType),
+    requestBodyJsonWarning,
+    requestBodyFormWarnings,
+    requestBodyFormInputs,
+    requestBodyFormValues,
     groupedInputs,
     preparedRequest,
     validationErrors,

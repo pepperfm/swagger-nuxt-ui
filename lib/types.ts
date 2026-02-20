@@ -86,6 +86,26 @@ export interface RequestEmulatorParamInput {
   spec: ResolvedParameterInputSpec
 }
 
+export type RequestBodyEditorMode = 'json' | 'form'
+
+export interface RequestBodyFormInput {
+  key: string
+  path: string
+  label: string
+  description?: string
+  required: boolean
+  nullable: boolean
+  spec: ResolvedParameterInputSpec
+  seed: unknown
+}
+
+export type RequestBodyFormValueMap = Record<string, RequestEmulatorParamValue>
+
+export interface RequestBodyFormResolutionResult {
+  inputs: RequestBodyFormInput[]
+  warnings: string[]
+}
+
 export interface RequestEmulatorAuthInput {
   securityKey: string | null
   token: string

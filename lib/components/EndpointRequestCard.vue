@@ -9,6 +9,7 @@ import type {
 import { computed } from 'vue'
 import { useRequestEmulator } from '../composables/useRequestEmulator'
 import ParameterInputField from './ParameterInputField.vue'
+import RequestBodyEditor from './RequestBodyEditor.vue'
 
 const props = withDefaults(defineProps<{
   endpoint: EndpointSelection
@@ -26,9 +27,14 @@ const props = withDefaults(defineProps<{
 
 const {
   auth,
+  bodyEditorMode,
   hasRequestBody,
   requestBodyText,
   requestBodyContentType,
+  requestBodyJsonWarning,
+  requestBodyFormWarnings,
+  requestBodyFormInputs,
+  requestBodyFormValues,
   groupedInputs,
   validationErrors,
   isRequestValid,
@@ -266,26 +272,17 @@ async function onSendClick() {
             class="space-y-2"
           >
             <USeparator label="BODY" />
-            <div class="flex items-center justify-between">
-              <span class="text-xs text-muted">Content-Type</span>
-              <UBadge
-                size="sm"
-                variant="soft"
-                color="info"
-              >
-                {{ requestBodyContentType || 'application/json' }}
-              </UBadge>
-            </div>
             <UFormField :error="errorForField('body')">
-              <UScrollArea class="max-h-72 w-full">
-                <UTextarea
-                  v-model="requestBodyText"
-                  :rows="10"
-                  autoresize
-                  :maxrows="40"
-                  class="font-mono text-xs w-full"
-                />
-              </UScrollArea>
+              <RequestBodyEditor
+                v-model:mode="bodyEditorMode"
+                v-model:json-value="requestBodyText"
+                v-model:form-values="requestBodyFormValues"
+                :content-type="requestBodyContentType"
+                :json-warning="requestBodyJsonWarning"
+                :form-warnings="requestBodyFormWarnings"
+                :form-inputs="requestBodyFormInputs"
+                :disabled="responseState.isSending"
+              />
             </UFormField>
           </div>
 
