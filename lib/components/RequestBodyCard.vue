@@ -3,7 +3,7 @@ import type { OpenApiSchemaObject } from '../types'
 import { useClipboard } from '@vueuse/core'
 
 const props = defineProps<{
-  schema: Record<string, OpenApiSchemaObject>
+  schema?: Record<string, OpenApiSchemaObject>
 }>()
 
 const { copy } = useClipboard()
@@ -71,11 +71,11 @@ function renderItems(items?: OpenApiSchemaObject): string | null {
 <template>
   <div class="space-y-2">
     <USeparator
-      v-if="Object.keys(props.schema).length"
+      v-if="Object.keys(props.schema ?? {}).length"
       label="Body"
     />
     <div
-      v-for="(prop, name) in props.schema"
+      v-for="(prop, name) in props.schema ?? {}"
       :key="name"
       class="rounded-lg border border-muted p-4 bg-muted/10 dark:bg-muted/20"
     >

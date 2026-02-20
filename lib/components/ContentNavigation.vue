@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import type { HttpMethod, INavigationGroup, INavigationItem } from '../types'
 
-defineProps<{
-  navigation: INavigationGroup[]
-  schemas: INavigationGroup
+const props = withDefaults(defineProps<{
+  navigation?: INavigationGroup[]
+  schemas?: INavigationGroup
   badgeColor: (method: HttpMethod) => 'primary' | 'secondary' | 'warning' | 'error' | 'info'
   selectedOperationId?: string
-}>()
+}>(), {
+  navigation: () => [],
+  schemas: () => ({
+    _path: '#schemas',
+    title: 'Schemas',
+    children: [],
+  }),
+})
 defineEmits<{
   (e: 'select', item: INavigationItem): void
 }>()
@@ -19,7 +26,11 @@ defineEmits<{
         label="ENDPOINTS"
         type="dashed"
       />
-      <UAccordion :items="navigation">
+      <UAccordion
+        :items="props.navigation"
+        label-key="title"
+        value-key="_path"
+      >
         <template #leading="{ item }">
           <div class="text-xs font-semibold tracking-wide text-muted pl-4">
             {{ item.title }}
@@ -29,13 +40,13 @@ defineEmits<{
         <template #body="{ item }">
           <ul class="pl-5 space-y-3 mt-2">
             <li
-              v-for="child in item.children"
+              v-for="child in item.children ?? []"
               :key="child._path"
             >
               <button
                 class="group flex items-center justify-between w-full cursor-pointer text-left text-sm focus:outline-none px-2 py-1 rounded-lg transition-colors text-primary"
                 :class="[
-                  selectedOperationId === child.operationId
+                  props.selectedOperationId === child.operationId
                     ? 'bg-primary/10 dark:bg-primary/10'
                     : 'hover:bg-primary/5 dark:hover:bg-primary/5',
                 ]"
@@ -43,7 +54,7 @@ defineEmits<{
               >
                 <span class="group-hover">{{ child.title }}</span>
                 <UBadge
-                  :color="badgeColor(child.method as HttpMethod)"
+                  :color="props.badgeColor(child.method as HttpMethod)"
                   size="sm"
                   class="uppercase"
                 >
@@ -63,13 +74,13 @@ defineEmits<{
       />
       <ul class="pl-4 space-y-3 mt-2">
         <li
-          v-for="child in schemas.children"
+          v-for="child in props.schemas.children ?? []"
           :key="child._path"
         >
           <button
             class="group flex items-center justify-between w-full cursor-pointer text-left text-sm focus:outline-none px-2 py-1 rounded-lg transition-colors text-primary"
             :class="[
-              selectedOperationId === child.operationId
+              props.selectedOperationId === child.operationId
                 ? 'bg-primary/10 dark:bg-primary/10'
                 : 'hover:bg-primary/5 dark:hover:bg-primary/5',
             ]"

@@ -2,20 +2,41 @@
 import type { OpenApiComponents, OpenApiSchemaObject } from '../types'
 import { useCopy } from '../composables/useCopy'
 
-const props = defineProps<{
+interface ResolvedArrayItemSchema {
+  schema: OpenApiSchemaObject
+  visitedRefs: string[]
+}
+
+const props = withDefaults(defineProps<{
   schema: OpenApiSchemaObject
   components?: OpenApiComponents
   isNested?: boolean
-}>()
+  depth?: number
+  visitedRefs?: string[]
+}>(), {
+  depth: 0,
+  visitedRefs: () => [],
+})
+
+const MAX_SCHEMA_NESTING_DEPTH = 6
 
 const { copyContent } = useCopy()
 
-function resolveSchemaNode(schema: OpenApiSchemaObject, components: OpenApiComponents): OpenApiSchemaObject {
+function resolveSchemaNode(
+  schema: OpenApiSchemaObject,
+  components: OpenApiComponents,
+  visitedRefs: string[],
+): OpenApiSchemaObject {
   if (!schema.$ref) {
     return schema
   }
 
   const ref = schema.$ref.replace('#/components/schemas/', '')
+  if (visitedRefs.includes(ref)) {
+    console.warn('[SchemaDetailCard] Circular schema $ref detected', { ref, visitedRefs })
+    return {}
+  }
+
   return components.schemas?.[ref] ?? {}
 }
 
@@ -34,17 +55,21 @@ function mergeSchemaObjects(base: OpenApiSchemaObject, next: OpenApiSchemaObject
   }
 }
 
-function mergeSchemas(schema: OpenApiSchemaObject, components: OpenApiComponents): OpenApiSchemaObject[] {
-  const resolved = resolveSchemaNode(schema, components)
+function mergeSchemas(
+  schema: OpenApiSchemaObject,
+  components: OpenApiComponents,
+  visitedRefs: string[],
+): OpenApiSchemaObject[] {
+  const resolved = resolveSchemaNode(schema, components, visitedRefs)
 
   if (resolved.anyOf || resolved.oneOf) {
     const list = resolved.anyOf ?? resolved.oneOf ?? []
-    return list.map(item => resolveSchemaNode(item, components))
+    return list.map(item => resolveSchemaNode(item, components, visitedRefs))
   }
 
   if (resolved.allOf) {
     const merged = resolved.allOf
-      .map(item => resolveSchemaNode(item, components))
+      .map(item => resolveSchemaNode(item, components, visitedRefs))
       .reduce<OpenApiSchemaObject>((acc, item) => mergeSchemaObjects(acc, item), {})
 
     return [merged]
@@ -69,24 +94,44 @@ function stringifyExample(example: unknown): string {
   return JSON.stringify(example, null, 2)
 }
 
-function resolveArrayItemSchema(items: OpenApiSchemaObject | undefined, components: OpenApiComponents): OpenApiSchemaObject | null {
+function resolveArrayItemSchema(
+  items: OpenApiSchemaObject | undefined,
+  components: OpenApiComponents,
+  visitedRefs: string[],
+): ResolvedArrayItemSchema | null {
   if (!items) {
     return null
   }
 
   if (items.$ref) {
     const ref = items.$ref.replace('#/components/schemas/', '')
-    return components.schemas?.[ref] ?? null
+    if (visitedRefs.includes(ref)) {
+      console.warn('[SchemaDetailCard] Circular array item $ref detected', { ref, visitedRefs })
+      return null
+    }
+
+    const resolved = components.schemas?.[ref]
+    if (!resolved) {
+      return null
+    }
+
+    return {
+      schema: resolved,
+      visitedRefs: [...visitedRefs, ref],
+    }
   }
 
-  return items
+  return {
+    schema: items,
+    visitedRefs,
+  }
 }
 </script>
 
 <template>
   <div v-if="schema">
     <div
-      v-for="(variant, index) in mergeSchemas(schema, props.components ?? {})"
+      v-for="(variant, index) in mergeSchemas(schema, props.components ?? {}, props.visitedRefs)"
       :key="index"
     >
       <h3
@@ -192,18 +237,25 @@ function resolveArrayItemSchema(items: OpenApiSchemaObject | undefined, componen
                 </template>
                 <template #content>
                   <div class="px-2 mt-2">
-                    <SchemaDetailCard
-                      v-if="resolveArrayItemSchema(prop.items, props.components ?? {})"
-                      :schema="resolveArrayItemSchema(prop.items, props.components ?? {}) ?? {}"
-                      :components="props.components"
-                      :is-nested="true"
-                    />
-                    <div
-                      v-else
-                      class="text-xs text-muted font-mono"
+                    <template
+                      v-for="(resolvedItem, resolvedIndex) in [resolveArrayItemSchema(prop.items, props.components ?? {}, props.visitedRefs)]"
+                      :key="`${String(name)}-items-${resolvedIndex}`"
                     >
-                      unknown
-                    </div>
+                      <SchemaDetailCard
+                        v-if="props.depth < MAX_SCHEMA_NESTING_DEPTH && resolvedItem"
+                        :schema="resolvedItem.schema"
+                        :components="props.components"
+                        :is-nested="true"
+                        :depth="props.depth + 1"
+                        :visited-refs="resolvedItem.visitedRefs"
+                      />
+                      <div
+                        v-else
+                        class="text-xs text-muted font-mono"
+                      >
+                        {{ props.depth >= MAX_SCHEMA_NESTING_DEPTH ? 'Nested schema depth limit reached' : 'unknown' }}
+                      </div>
+                    </template>
                   </div>
                 </template>
               </UCollapsible>

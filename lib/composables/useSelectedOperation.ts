@@ -28,6 +28,10 @@ function resolveSchemaRef(schema: IApiSpec | null, node: OpenApiSchemaObject | u
   return resolved
 }
 
+function isObjectRecord(value: unknown): value is Record<string, OpenApiSchemaObject> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
 function getMethodConfigByOperationId(paths: IApiSpec['paths'] | undefined, operationId: string): IMethod | undefined {
   if (!paths) {
     return undefined
@@ -105,7 +109,10 @@ export function useSelectedOperation(options: {
 
   function getParameters(operationId: string): IParameter[] {
     const config = getMethodConfig(operationId)
-    if (!config?.parameters) {
+    if (!Array.isArray(config?.parameters)) {
+      if (config?.parameters !== undefined) {
+        console.warn('[useSelectedOperation] Endpoint parameters are not an array', { operationId })
+      }
       return []
     }
 
@@ -131,7 +138,7 @@ export function useSelectedOperation(options: {
       ?? body.content?.['application/x-www-form-urlencoded']
 
     const requestSchema = resolveSchemaRef(schema.value, json?.schema)
-    if (!requestSchema?.properties) {
+    if (!isObjectRecord(requestSchema?.properties)) {
       return null
     }
 

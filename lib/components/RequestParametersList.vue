@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import type { IParameter } from '../types'
 
-defineProps<{
-  parameters: IParameter[]
-}>()
+const props = withDefaults(defineProps<{
+  parameters?: IParameter[]
+}>(), {
+  parameters: () => [],
+})
 </script>
 
 <template>
   <div class="space-y-4">
     <USeparator
-      v-if="parameters.length"
+      v-if="props.parameters.length"
       label="Parameters"
     />
     <div
-      v-for="param in parameters"
+      v-for="param in props.parameters"
       :key="param.name + param.in"
       class="border-l-2 pl-4 border-muted"
     >
