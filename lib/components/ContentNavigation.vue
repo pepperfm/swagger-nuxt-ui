@@ -96,6 +96,7 @@ const filteredSchemaItems = computed(() => {
         icon="i-lucide-search"
         size="sm"
         placeholder="Filter schemas..."
+        autocomplete="off"
         class="mt-2"
       />
       <ul class="pl-4 space-y-3 mt-2">

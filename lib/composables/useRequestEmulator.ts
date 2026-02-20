@@ -22,6 +22,11 @@ import {
   interpolatePathParams,
   serializeQueryParams,
 } from './requestEmulatorUtils'
+import {
+  resolveInitialParameterValue,
+  resolveParameterInputSpec,
+  serializeParameterValue,
+} from './requestParameterInputResolver'
 import { generateExampleFromSchema } from './schemaExample'
 
 interface UseRequestEmulatorOptions {
@@ -115,23 +120,37 @@ function createParamInput(param: IParameter): RequestEmulatorParamInput | null {
     return null
   }
 
+  const spec = resolveParameterInputSpec(param, location)
   const seed = param.schema?.default ?? param.schema?.example
   return {
     key: `${location}:${param.name}`,
     name: param.name,
     in: location,
     required: Boolean(param.required),
-    type: param.type ?? param.schema?.type ?? 'any',
+    type: spec.valueKind,
     description: param.description ?? '',
-    value: stringifyUnknown(seed),
+    value: resolveInitialParameterValue(spec, seed),
+    spec,
   }
 }
 
 function buildCookieHeader(inputs: RequestEmulatorParamInput[]): string | null {
-  const pairs = inputs
+  const pairs: Array<[string, string]> = []
+  inputs
     .filter(input => input.in === 'cookie')
-    .map(input => [input.name, input.value.trim()] as const)
-    .filter(([, value]) => value !== '')
+    .forEach((input) => {
+      const serialized = serializeParameterValue(input.spec, input.value)
+      if (serialized.length === 0) {
+        return
+      }
+
+      const normalized = serialized.length > 1 ? serialized.join(',') : serialized[0]
+      if (!normalized) {
+        return
+      }
+
+      pairs.push([input.name, normalized])
+    })
 
   if (!pairs.length) {
     return null
@@ -198,24 +217,46 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
 
   const pathValues = computed(() => {
     return groupedInputs.value.path.reduce<Record<string, string>>((acc, input) => {
-      acc[input.name] = input.value
+      const serialized = serializeParameterValue(input.spec, input.value)
+      if (serialized.length === 0) {
+        acc[input.name] = ''
+        return acc
+      }
+
+      acc[input.name] = serialized.length > 1 ? serialized.join(',') : serialized[0] ?? ''
       return acc
     }, {})
   })
 
   const queryValues = computed(() => {
-    return groupedInputs.value.query.reduce<Record<string, string>>((acc, input) => {
-      acc[input.name] = input.value
+    return groupedInputs.value.query.reduce<Record<string, string | string[]>>((acc, input) => {
+      const serialized = serializeParameterValue(input.spec, input.value)
+      if (serialized.length === 0) {
+        return acc
+      }
+
+      if (serialized.length > 1 && input.spec.serializationHint.arrayStyle === 'multi') {
+        acc[input.name] = serialized
+        return acc
+      }
+
+      acc[input.name] = serialized.length > 1 ? serialized.join(',') : serialized[0] ?? ''
       return acc
     }, {})
   })
 
   const headerValues = computed(() => {
     return groupedInputs.value.header.reduce<Record<string, string>>((acc, input) => {
-      const normalized = input.value.trim()
+      const serialized = serializeParameterValue(input.spec, input.value)
+      if (serialized.length === 0) {
+        return acc
+      }
+
+      const normalized = serialized.length > 1 ? serialized.join(',') : serialized[0]
       if (!normalized) {
         return acc
       }
+
       acc[input.name] = normalized
       return acc
     }, {})
@@ -226,52 +267,7 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     return interpolatePathParams(url, pathValues.value)
   })
 
-  const validationErrors = computed<RequestEmulatorValidationError[]>(() => {
-    const errors: RequestEmulatorValidationError[] = []
-
-    paramInputs.value.forEach((input) => {
-      if (!input.required) {
-        return
-      }
-
-      if (input.value.trim()) {
-        return
-      }
-
-      errors.push({
-        field: input.key,
-        message: `${input.name} is required`,
-      })
-    })
-
-    requestPath.value.missing.forEach((name) => {
-      errors.push({
-        field: `path:${name}`,
-        message: `Path parameter "${name}" is required`,
-      })
-    })
-
-    if (bodyMeta.value.required && !requestBodyText.value.trim()) {
-      errors.push({
-        field: 'body',
-        message: 'Request body is required',
-      })
-    }
-
-    const isJsonBody = bodyMeta.value.contentType?.includes('application/json')
-    if (isJsonBody && requestBodyText.value.trim()) {
-      try {
-        JSON.parse(requestBodyText.value)
-      } catch {
-        errors.push({
-          field: 'body',
-          message: 'Request body must be valid JSON',
-        })
-      }
-    }
-
-    return errors
-  })
+  const validationErrors = computed<RequestEmulatorValidationError[]>(() => [])
 
   const preparedRequest = computed<RequestEmulatorPreparedRequest | null>(() => {
     const endpoint = options.endpoint.value
@@ -320,7 +316,7 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     return prepared
   })
 
-  const isRequestValid = computed(() => validationErrors.value.length === 0 && preparedRequest.value !== null)
+  const isRequestValid = computed(() => preparedRequest.value !== null)
 
   function initializeRequestState() {
     const nextInputs: RequestEmulatorParamInput[] = options.parameters.value
@@ -351,16 +347,16 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
 
   async function sendRequest() {
     const prepared = preparedRequest.value
-    if (!prepared || !isRequestValid.value) {
+    if (!prepared) {
       responseState.value = {
         isSending: false,
         result: null,
         error: {
           code: 'invalid_request',
-          message: 'Request is invalid. Check required fields and JSON body.',
+          message: 'Request is not ready yet.',
         },
       }
-      console.warn('[useRequestEmulator] Request send skipped because request is invalid')
+      console.warn('[useRequestEmulator] Request send skipped because endpoint is missing')
       return
     }
 

@@ -14,7 +14,7 @@ export function interpolatePathParams(pathTemplate: string, values: Record<strin
   const missing: string[] = []
 
   const path = pathTemplate.replace(/\{([^}]+)\}/g, (_match, paramName: string) => {
-    const rawValue = values[paramName]
+    const rawValue = values[paramName] ?? ''
     if (!rawValue.trim()) {
       missing.push(paramName)
       return `{${paramName}}`
@@ -26,15 +26,19 @@ export function interpolatePathParams(pathTemplate: string, values: Record<strin
   return { path, missing }
 }
 
-export function serializeQueryParams(values: Record<string, string>): string {
+export function serializeQueryParams(values: Record<string, string | string[]>): string {
   const query = new URLSearchParams()
 
   Object.entries(values).forEach(([key, value]) => {
-    const normalized = value.trim()
-    if (!normalized) {
-      return
-    }
-    query.append(key, normalized)
+    const valuesList = Array.isArray(value) ? value : [value]
+    valuesList.forEach((entry) => {
+      const normalized = entry.trim()
+      if (!normalized) {
+        return
+      }
+
+      query.append(key, normalized)
+    })
   })
 
   const encoded = query.toString()

@@ -8,6 +8,7 @@ import type {
 } from '../types'
 import { computed } from 'vue'
 import { useRequestEmulator } from '../composables/useRequestEmulator'
+import ParameterInputField from './ParameterInputField.vue'
 
 const props = withDefaults(defineProps<{
   endpoint: EndpointSelection
@@ -192,9 +193,10 @@ async function onSendClick() {
               :help="input.description || undefined"
               :error="errorForField(input.key)"
             >
-              <UInput
+              <ParameterInputField
                 v-model="input.value"
-                :placeholder="input.type"
+                :spec="input.spec"
+                :disabled="responseState.isSending"
               />
             </UFormField>
           </div>
@@ -211,10 +213,10 @@ async function onSendClick() {
               :help="input.description || undefined"
               :error="errorForField(input.key)"
             >
-              <UInput
+              <ParameterInputField
                 v-model="input.value"
-                :placeholder="input.type"
-                class="w-full"
+                :spec="input.spec"
+                :disabled="responseState.isSending"
               />
             </UFormField>
           </div>
@@ -231,9 +233,10 @@ async function onSendClick() {
               :help="input.description || undefined"
               :error="errorForField(input.key)"
             >
-              <UInput
+              <ParameterInputField
                 v-model="input.value"
-                :placeholder="input.type"
+                :spec="input.spec"
+                :disabled="responseState.isSending"
               />
             </UFormField>
           </div>
@@ -250,9 +253,10 @@ async function onSendClick() {
               :help="input.description || undefined"
               :error="errorForField(input.key)"
             >
-              <UInput
+              <ParameterInputField
                 v-model="input.value"
-                :placeholder="input.type"
+                :spec="input.spec"
+                :disabled="responseState.isSending"
               />
             </UFormField>
           </div>
@@ -335,7 +339,7 @@ async function onSendClick() {
     >
       <div class="space-y-3">
         <div class="flex flex-wrap items-center gap-2">
-          <UBadge :color="responseBadgeColor(responseState.result.status)">
+          <UBadge :color="responseBadgeColor(responseState.result.status)" variant="outline">
             {{ responseState.result.status }}
           </UBadge>
           <span class="text-sm text-muted">{{ responseState.result.statusText }}</span>
@@ -372,7 +376,7 @@ async function onSendClick() {
         </div>
 
         <UScrollArea class="max-h-80 w-full rounded-md border border-default bg-muted/20">
-          <pre class="text-xs font-mono whitespace-pre-wrap break-words p-2 text-muted-foreground">{{ responseState.result.bodyText || '(empty)' }}</pre>
+          <pre class="text-xs font-mono whitespace-pre-wrap wrap-break-word p-2 text-muted-foreground">{{ responseState.result.bodyText || '(empty)' }}</pre>
         </UScrollArea>
       </div>
     </UCard>

@@ -31,8 +31,8 @@ app/
 lib/
 ├── index.ts                       # Public package API
 ├── types.ts                       # Public OpenAPI contracts
-├── components/                    # Library-owned UI components (SwaggerViewer, EndpointRequestCard, cards/navigation)
-├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator)
+├── components/                    # Library-owned UI components (SwaggerViewer, EndpointRequestCard, ParameterInputField, cards/navigation)
+├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator + parameter resolver)
 └── styles/swagger-ui.css          # Library stylesheet
 
 bridge-viewer/
@@ -86,7 +86,9 @@ docs/
 | `vite.viewer.config.ts` | Standalone viewer bundle configuration |
 | `lib/index.ts` | Library public API exports |
 | `lib/components/EndpointRequestCard.vue` | Endpoint request emulator UI (right sidebar) |
+| `lib/components/ParameterInputField.vue` | Typed parameter input renderer (Nuxt UI control mapping) |
 | `lib/composables/useRequestEmulator.ts` | Request state, validation, and execution flow |
+| `lib/composables/requestParameterInputResolver.ts` | OpenAPI parameter schema -> input control/value resolver |
 | `bridge-viewer/main.ts` | Browser entry used by Laravel bridge page |
 | `packages/laravel-bridge/routes/swagger-ui.php` | Bridge route registration for JSON + page + assets |
 | `packages/laravel-bridge/src/Http/Controllers/SwaggerViewerPageController.php` | Renders `/swagger-ui` page |

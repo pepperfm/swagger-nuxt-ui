@@ -4,6 +4,7 @@ import './styles/swagger-ui.css'
 
 export { default as ContentNavigation } from './components/ContentNavigation.vue'
 export { default as EndpointRequestCard } from './components/EndpointRequestCard.vue'
+export { default as ParameterInputField } from './components/ParameterInputField.vue'
 export { default as RequestBodyCard } from './components/RequestBodyCard.vue'
 export { default as RequestParametersList } from './components/RequestParametersList.vue'
 export { default as ResponseExampleCard } from './components/ResponseExampleCard.vue'
@@ -17,6 +18,12 @@ export {
   interpolatePathParams,
   serializeQueryParams,
 } from './composables/requestEmulatorUtils'
+export {
+  isParameterValueEmpty,
+  resolveInitialParameterValue,
+  resolveParameterInputSpec,
+  serializeParameterValue,
+} from './composables/requestParameterInputResolver'
 export { generateExampleFromSchema } from './composables/schemaExample'
 export { useCopy } from './composables/useCopy'
 export { useRequestEmulator } from './composables/useRequestEmulator'
@@ -39,10 +46,17 @@ export type {
   RequestEmulatorAuthInput,
   RequestEmulatorExecutionError,
   RequestEmulatorExecutionState,
+  RequestEmulatorParamCollectionValue,
+  RequestEmulatorParamControl,
   RequestEmulatorParamInput,
+  RequestEmulatorParamOption,
+  RequestEmulatorParamScalarValue,
+  RequestEmulatorParamSerializationHint,
+  RequestEmulatorParamValue,
   RequestEmulatorPreparedRequest,
   RequestEmulatorResponseResult,
   RequestEmulatorValidationError,
+  ResolvedParameterInputSpec,
   ResponseExample,
   SchemaSelection,
   SelectedItem,

@@ -14,3 +14,11 @@
 .swagger-ui-viewer code {
   font-variant-ligatures: none;
 }
+
+.swagger-ui-viewer .swagger-ui-param-control {
+  width: 100%;
+}
+
+.swagger-ui-viewer .swagger-ui-param-control .min-h-11 {
+  min-height: 2.75rem;
+}

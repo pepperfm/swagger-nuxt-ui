@@ -10,6 +10,9 @@ export interface OpenApiSchemaObject {
   required?: boolean | string[]
   default?: unknown
   example?: unknown
+  minimum?: number
+  maximum?: number
+  multipleOf?: number
   minLength?: number
   maxLength?: number
   properties?: Record<string, OpenApiSchemaObject>
@@ -32,6 +35,46 @@ export interface OpenApiSecurityScheme {
 
 export type OpenApiParameterLocation = 'path' | 'query' | 'header' | 'cookie'
 
+export type RequestEmulatorParamControl = 'text'
+  | 'textarea'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'multi-select'
+  | 'checkbox-group'
+  | 'radio-group'
+  | 'date'
+  | 'time'
+  | 'slider'
+
+export type RequestEmulatorParamScalarValue = string | number | boolean | null
+export type RequestEmulatorParamCollectionValue = Array<string | number | boolean>
+export type RequestEmulatorParamValue = RequestEmulatorParamScalarValue | RequestEmulatorParamCollectionValue
+
+export interface RequestEmulatorParamOption {
+  label: string
+  value: string | number | boolean
+}
+
+export interface RequestEmulatorParamSerializationHint {
+  arrayStyle: 'csv' | 'multi'
+  explode: boolean
+}
+
+export interface ResolvedParameterInputSpec {
+  control: RequestEmulatorParamControl
+  valueKind: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'date' | 'date-time' | 'time' | 'unknown'
+  arrayItemKind: 'string' | 'number' | 'integer' | 'boolean' | null
+  multiple: boolean
+  format: string | null
+  placeholder: string
+  options: RequestEmulatorParamOption[]
+  min: number | null
+  max: number | null
+  step: number | null
+  serializationHint: RequestEmulatorParamSerializationHint
+}
+
 export interface RequestEmulatorParamInput {
   key: string
   name: string
@@ -39,7 +82,8 @@ export interface RequestEmulatorParamInput {
   required: boolean
   type: string
   description?: string
-  value: string
+  value: RequestEmulatorParamValue
+  spec: ResolvedParameterInputSpec
 }
 
 export interface RequestEmulatorAuthInput {
@@ -99,6 +143,8 @@ export interface INavigationGroup {
 export interface IParameter {
   name: string
   in: string
+  style?: string
+  explode?: boolean
   type?: string
   description?: string
   required?: boolean
