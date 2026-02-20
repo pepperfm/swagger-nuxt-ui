@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type {
+  AuthorizationResolveResult,
   EndpointSelection,
   IMethod,
   IParameter,
   OpenApiComponents,
-  OpenApiSecurityScheme,
 } from '../types'
 import { computed } from 'vue'
 import { useRequestEmulator } from '../composables/useRequestEmulator'
@@ -16,8 +16,7 @@ const props = withDefaults(defineProps<{
   method: IMethod | undefined
   parameters?: IParameter[]
   components: OpenApiComponents
-  securityKey: string | null
-  securityScheme: OpenApiSecurityScheme | null
+  authorization: AuthorizationResolveResult | null
   baseApiUrl: string
   requestTimeoutMs?: number
 }>(), {
@@ -26,7 +25,6 @@ const props = withDefaults(defineProps<{
 })
 
 const {
-  auth,
   bodyEditorMode,
   hasRequestBody,
   requestBodyText,
@@ -46,10 +44,25 @@ const {
   method: computed(() => props.method),
   parameters: computed(() => props.parameters),
   components: computed(() => props.components),
-  securityKey: computed(() => props.securityKey),
-  securityScheme: computed(() => props.securityScheme),
+  authorization: computed(() => props.authorization),
   baseApiUrl: computed(() => props.baseApiUrl),
   requestTimeoutMs: props.requestTimeoutMs,
+})
+
+const authorizationWarning = computed(() => {
+  if (!props.authorization) {
+    return null
+  }
+
+  if (props.authorization.hasSatisfiedRequirement) {
+    return null
+  }
+
+  if (props.authorization.missingKeys.length === 0) {
+    return null
+  }
+
+  return `Missing credentials for: ${props.authorization.missingKeys.join(', ')}`
 })
 
 const headersCount = computed(() => {
@@ -156,42 +169,13 @@ async function onSendClick() {
 
       <UScrollArea class="max-h-[56vh] pr-2">
         <div class="space-y-3 pe-1">
-          <div
-            v-if="props.securityKey && props.securityScheme"
-            class="space-y-2"
-          >
-            <USeparator label="AUTH" />
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-muted">
-                {{ props.securityKey }}
-              </span>
-              <UBadge
-                size="sm"
-                variant="soft"
-                color="info"
-              >
-                {{ props.securityScheme.type }}
-              </UBadge>
-            </div>
-            <UFormField
-              label="Token"
-              :error="errorForField('auth')"
-            >
-              <UInput
-                v-model="auth.token"
-                type="password"
-                autocomplete="new-password"
-                name="swagger-auth-token"
-                autocapitalize="off"
-                autocorrect="off"
-                :spellcheck="false"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                placeholder="Paste access token"
-                icon="i-lucide-key-round"
-              />
-            </UFormField>
-          </div>
+          <UAlert
+            v-if="authorizationWarning"
+            color="warning"
+            variant="soft"
+            title="Authorization is incomplete"
+            :description="authorizationWarning"
+          />
 
           <div
             v-if="groupedInputs.path.length"

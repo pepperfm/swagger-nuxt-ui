@@ -8,6 +8,7 @@ import type {
   IParameter,
   NavigationIndex,
   OpenApiSchemaObject,
+  OpenApiSecurityRequirement,
   SchemaSelection,
   SelectedItem,
 } from '../types'
@@ -101,6 +102,43 @@ function getEndpointRecordByOperationId(
   }
 
   return null
+}
+
+function sanitizeSecurityRequirements(
+  raw: unknown,
+  context: { operationId: string, scope: 'operation' | 'global' },
+): OpenApiSecurityRequirement[] {
+  if (raw === undefined) {
+    return []
+  }
+
+  if (!Array.isArray(raw)) {
+    console.warn('[useSelectedOperation] Security requirements are not an array', context)
+    return []
+  }
+
+  const next: OpenApiSecurityRequirement[] = []
+  raw.forEach((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      console.warn('[useSelectedOperation] Security requirement item is invalid', context)
+      return
+    }
+
+    const record = item as Record<string, unknown>
+    const normalized: OpenApiSecurityRequirement = {}
+    Object.entries(record).forEach(([key, scopes]) => {
+      if (Array.isArray(scopes)) {
+        normalized[key] = scopes.map(scope => String(scope))
+        return
+      }
+
+      normalized[key] = []
+    })
+
+    next.push(normalized)
+  })
+
+  return next
 }
 
 export function useSelectedOperation(options: {
@@ -230,19 +268,21 @@ export function useSelectedOperation(options: {
     return requestSchema.properties
   }
 
-  function getSecurity(operationId: string): string | null {
+  function getSecurityRequirements(operationId: string): OpenApiSecurityRequirement[] {
     const config = getMethodConfig(operationId)
-    const security = config?.security
-    if (!security || !Array.isArray(security)) {
-      return null
+
+    const operationSecurity = sanitizeSecurityRequirements(config?.security, {
+      operationId,
+      scope: 'operation',
+    })
+    if (operationSecurity.length > 0 || config?.security !== undefined) {
+      return operationSecurity
     }
 
-    const firstSecurity = security[0]
-    if (!firstSecurity) {
-      return null
-    }
-
-    return Object.keys(firstSecurity)[0] || null
+    return sanitizeSecurityRequirements(schema.value?.security, {
+      operationId,
+      scope: 'global',
+    })
   }
 
   const selectedAnchor = computed(() => selectedItem.value?.anchor ?? null)
@@ -256,6 +296,6 @@ export function useSelectedOperation(options: {
     getMethodConfig,
     getParameters,
     getRequestBodySchema,
-    getSecurity,
+    getSecurityRequirements,
   }
 }

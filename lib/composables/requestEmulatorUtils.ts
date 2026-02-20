@@ -1,4 +1,8 @@
 import type {
+  AuthorizationResolveResult,
+  AuthorizationTarget,
+  NormalizedSecuritySchemeMeta,
+  OpenApiSecurityRequirement,
   OpenApiSecurityScheme,
   RequestEmulatorPreparedRequest,
 } from '../types'
@@ -61,41 +65,329 @@ export function buildRequestUrl(baseApiUrl: string, endpointPath: string, query:
   return `${normalizedBase}${normalizedPath}${query}`
 }
 
-export function applySecurityHeader(options: {
-  headers: Record<string, string>
-  securityScheme: OpenApiSecurityScheme | null
-  securityKey: string | null
-  token: string
-}): {
-  headers: Record<string, string>
-  warnings: string[]
-} {
-  const { headers, securityScheme, securityKey, token } = options
-  const nextHeaders = { ...headers }
-  const warnings: string[] = []
-  const normalizedToken = token.trim()
+function createEmptyAuthorizationTarget(): AuthorizationTarget {
+  return {
+    headers: {},
+    query: {},
+    cookies: {},
+  }
+}
 
-  if (!securityKey || !securityScheme || !normalizedToken) {
-    return { headers: nextHeaders, warnings }
+function pushWarning(target: string[], message: string) {
+  if (!target.includes(message)) {
+    target.push(message)
+  }
+}
+
+function encodeBasicCredentials(raw: string): string {
+  if (typeof globalThis.btoa === 'function') {
+    return globalThis.btoa(raw)
   }
 
-  if (securityScheme.type === 'http' && securityScheme.scheme?.toLowerCase() === 'bearer') {
-    nextHeaders.Authorization = `Bearer ${normalizedToken}`
-    return { headers: nextHeaders, warnings }
+  console.warn('[requestEmulatorUtils] btoa is unavailable; HTTP Basic token is passed without base64 encoding')
+  return raw
+}
+
+export function normalizeSecuritySchemeMeta(
+  key: string,
+  securityScheme: OpenApiSecurityScheme | undefined,
+): NormalizedSecuritySchemeMeta {
+  if (!securityScheme) {
+    return {
+      key,
+      type: 'unknown',
+      kind: 'unsupported',
+      supported: false,
+      label: key,
+      description: 'Security scheme is not defined in components.securitySchemes.',
+      headerName: null,
+      queryName: null,
+      cookieName: null,
+    }
+  }
+
+  if (securityScheme.type === 'http') {
+    const scheme = securityScheme.scheme?.toLowerCase()
+    if (scheme === 'bearer') {
+      return {
+        key,
+        type: securityScheme.type,
+        kind: 'http-bearer',
+        supported: true,
+        label: `${key} (http bearer)`,
+        description: securityScheme.description ?? 'HTTP Bearer token via Authorization header.',
+        headerName: 'Authorization',
+        queryName: null,
+        cookieName: null,
+      }
+    }
+
+    if (scheme === 'basic') {
+      return {
+        key,
+        type: securityScheme.type,
+        kind: 'http-basic',
+        supported: true,
+        label: `${key} (http basic)`,
+        description: securityScheme.description ?? 'HTTP Basic credentials in Authorization header.',
+        headerName: 'Authorization',
+        queryName: null,
+        cookieName: null,
+      }
+    }
+
+    return {
+      key,
+      type: securityScheme.type,
+      kind: 'unsupported',
+      supported: false,
+      label: `${key} (http ${scheme ?? 'unknown'})`,
+      description: securityScheme.description ?? 'Unsupported HTTP security scheme.',
+      headerName: null,
+      queryName: null,
+      cookieName: null,
+    }
   }
 
   if (securityScheme.type === 'apiKey') {
     if (securityScheme.in === 'header' && securityScheme.name) {
-      nextHeaders[securityScheme.name] = normalizedToken
-      return { headers: nextHeaders, warnings }
+      return {
+        key,
+        type: securityScheme.type,
+        kind: 'api-key-header',
+        supported: true,
+        label: `${key} (api key header)`,
+        description: securityScheme.description ?? 'API key sent via header.',
+        headerName: securityScheme.name,
+        queryName: null,
+        cookieName: null,
+      }
     }
 
-    warnings.push(`Unsupported apiKey location: ${securityScheme.in ?? 'unknown'}`)
-    return { headers: nextHeaders, warnings }
+    if (securityScheme.in === 'query' && securityScheme.name) {
+      return {
+        key,
+        type: securityScheme.type,
+        kind: 'api-key-query',
+        supported: true,
+        label: `${key} (api key query)`,
+        description: securityScheme.description ?? 'API key sent via query string.',
+        headerName: null,
+        queryName: securityScheme.name,
+        cookieName: null,
+      }
+    }
+
+    if (securityScheme.in === 'cookie' && securityScheme.name) {
+      return {
+        key,
+        type: securityScheme.type,
+        kind: 'api-key-cookie',
+        supported: true,
+        label: `${key} (api key cookie)`,
+        description: securityScheme.description ?? 'API key sent via cookie.',
+        headerName: null,
+        queryName: null,
+        cookieName: securityScheme.name,
+      }
+    }
+
+    return {
+      key,
+      type: securityScheme.type,
+      kind: 'unsupported',
+      supported: false,
+      label: `${key} (api key)`,
+      description: securityScheme.description ?? 'Unsupported apiKey location or missing name.',
+      headerName: null,
+      queryName: null,
+      cookieName: null,
+    }
   }
 
-  warnings.push(`Unsupported security scheme: ${securityScheme.type}`)
-  return { headers: nextHeaders, warnings }
+  if (securityScheme.type === 'oauth2') {
+    return {
+      key,
+      type: securityScheme.type,
+      kind: 'oauth2-bearer',
+      supported: true,
+      label: `${key} (oauth2 bearer)`,
+      description: securityScheme.description ?? 'OAuth2 token sent as Bearer Authorization.',
+      headerName: 'Authorization',
+      queryName: null,
+      cookieName: null,
+    }
+  }
+
+  if (securityScheme.type === 'openIdConnect') {
+    return {
+      key,
+      type: securityScheme.type,
+      kind: 'openid-connect-bearer',
+      supported: true,
+      label: `${key} (openIdConnect bearer)`,
+      description: securityScheme.description ?? 'OpenID Connect token sent as Bearer Authorization.',
+      headerName: 'Authorization',
+      queryName: null,
+      cookieName: null,
+    }
+  }
+
+  return {
+    key,
+    type: securityScheme.type,
+    kind: 'unsupported',
+    supported: false,
+    label: `${key} (${securityScheme.type})`,
+    description: securityScheme.description ?? 'Unsupported security scheme type.',
+    headerName: null,
+    queryName: null,
+    cookieName: null,
+  }
+}
+
+export function buildSecuritySchemeMetaMap(
+  securitySchemes: Record<string, OpenApiSecurityScheme> | undefined,
+): Record<string, NormalizedSecuritySchemeMeta> {
+  const next: Record<string, NormalizedSecuritySchemeMeta> = {}
+  Object.entries(securitySchemes ?? {}).forEach(([key, scheme]) => {
+    next[key] = normalizeSecuritySchemeMeta(key, scheme)
+  })
+  return next
+}
+
+function applyCredentialForScheme(
+  target: AuthorizationTarget,
+  meta: NormalizedSecuritySchemeMeta,
+  credential: string,
+  warnings: string[],
+) {
+  switch (meta.kind) {
+    case 'http-bearer':
+    case 'oauth2-bearer':
+    case 'openid-connect-bearer':
+      target.headers.Authorization = `Bearer ${credential}`
+      return
+    case 'http-basic':
+      target.headers.Authorization = `Basic ${encodeBasicCredentials(credential)}`
+      return
+    case 'api-key-header':
+      if (meta.headerName) {
+        target.headers[meta.headerName] = credential
+      }
+      return
+    case 'api-key-query':
+      if (meta.queryName) {
+        target.query[meta.queryName] = credential
+      }
+      return
+    case 'api-key-cookie':
+      if (meta.cookieName) {
+        target.cookies[meta.cookieName] = credential
+      }
+      return
+    default:
+      pushWarning(warnings, `Unsupported security scheme for "${meta.key}"`)
+  }
+}
+
+function evaluateSecurityRequirement(
+  requirement: OpenApiSecurityRequirement,
+  schemeMetaMap: Record<string, NormalizedSecuritySchemeMeta>,
+  credentials: Record<string, string>,
+): AuthorizationResolveResult {
+  const target = createEmptyAuthorizationTarget()
+  const missingKeys: string[] = []
+  const warnings: string[] = []
+  const appliedKeys: string[] = []
+
+  const schemeKeys = Object.keys(requirement)
+  if (schemeKeys.length === 0) {
+    return {
+      target,
+      appliedKeys,
+      missingKeys,
+      warnings,
+      hasSatisfiedRequirement: true,
+    }
+  }
+
+  schemeKeys.forEach((key) => {
+    const meta = schemeMetaMap[key]
+    if (!meta) {
+      missingKeys.push(key)
+      pushWarning(warnings, `Security scheme "${key}" is not defined in OpenAPI components`)
+      return
+    }
+
+    if (!meta.supported) {
+      missingKeys.push(key)
+      pushWarning(warnings, `Security scheme "${key}" is not supported in request emulator`)
+      return
+    }
+
+    const credential = (credentials[key] ?? '').trim()
+    if (!credential) {
+      missingKeys.push(key)
+      return
+    }
+
+    applyCredentialForScheme(target, meta, credential, warnings)
+    appliedKeys.push(key)
+  })
+
+  return {
+    target,
+    appliedKeys,
+    missingKeys,
+    warnings,
+    hasSatisfiedRequirement: missingKeys.length === 0,
+  }
+}
+
+export function resolveRequestAuthorization(options: {
+  securityRequirements: OpenApiSecurityRequirement[] | undefined
+  securitySchemes: Record<string, OpenApiSecurityScheme> | undefined
+  credentials: Record<string, string>
+}): AuthorizationResolveResult {
+  const requirements = options.securityRequirements ?? []
+  const schemeMetaMap = buildSecuritySchemeMetaMap(options.securitySchemes)
+
+  if (requirements.length === 0) {
+    return {
+      target: createEmptyAuthorizationTarget(),
+      appliedKeys: [],
+      missingKeys: [],
+      warnings: [],
+      hasSatisfiedRequirement: true,
+    }
+  }
+
+  let bestCandidate: AuthorizationResolveResult | null = null
+
+  requirements.forEach((requirement) => {
+    const candidate = evaluateSecurityRequirement(requirement, schemeMetaMap, options.credentials)
+    if (candidate.hasSatisfiedRequirement) {
+      bestCandidate = candidate
+      return
+    }
+
+    if (!bestCandidate || candidate.appliedKeys.length > bestCandidate.appliedKeys.length) {
+      bestCandidate = candidate
+    }
+  })
+
+  if (bestCandidate) {
+    return bestCandidate
+  }
+
+  return {
+    target: createEmptyAuthorizationTarget(),
+    appliedKeys: [],
+    missingKeys: [],
+    warnings: [],
+    hasSatisfiedRequirement: false,
+  }
 }
 
 export function buildCurlCommand(prepared: RequestEmulatorPreparedRequest): string {

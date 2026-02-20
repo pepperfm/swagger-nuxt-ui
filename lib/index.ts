@@ -28,10 +28,12 @@ export {
 } from './composables/requestBodyFormState'
 export { resolveRequestBodyFormInputs } from './composables/requestBodyInputResolver'
 export {
-  applySecurityHeader,
   buildCurlCommand,
   buildRequestUrl,
+  buildSecuritySchemeMetaMap,
   interpolatePathParams,
+  normalizeSecuritySchemeMeta,
+  resolveRequestAuthorization,
   serializeQueryParams,
 } from './composables/requestEmulatorUtils'
 export {
@@ -46,8 +48,11 @@ export { useRequestEmulator } from './composables/useRequestEmulator'
 export { useSelectedOperation } from './composables/useSelectedOperation'
 export { useSwaggerNavigation } from './composables/useSwaggerNavigation'
 export { useSwaggerSchema } from './composables/useSwaggerSchema'
+export { useViewerAuthorization } from './composables/useViewerAuthorization'
 
 export type {
+  AuthorizationResolveResult,
+  AuthorizationTarget,
   EndpointSelection,
   HttpMethod,
   IApiSpec,
@@ -56,15 +61,17 @@ export type {
   INavigationItem,
   IParameter,
   NavigationIndex,
+  NormalizedSecuritySchemeKind,
+  NormalizedSecuritySchemeMeta,
   OpenApiComponents,
   OpenApiParameterLocation,
   OpenApiSchemaObject,
+  OpenApiSecurityRequirement,
   OpenApiSecurityScheme,
   RequestBodyEditorMode,
   RequestBodyFormInput,
   RequestBodyFormResolutionResult,
   RequestBodyFormValueMap,
-  RequestEmulatorAuthInput,
   RequestEmulatorExecutionError,
   RequestEmulatorExecutionState,
   RequestEmulatorParamCollectionValue,
@@ -81,6 +88,7 @@ export type {
   ResponseExample,
   SchemaSelection,
   SelectedItem,
+  ViewerAuthorizationState,
 } from './types'
 
 export function createSwaggerUiPlugin(): Plugin {

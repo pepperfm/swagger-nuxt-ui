@@ -1,5 +1,6 @@
 import type { ComputedRef, Ref } from 'vue'
 import type {
+  AuthorizationResolveResult,
   EndpointSelection,
   HttpMethod,
   IMethod,
@@ -7,11 +8,9 @@ import type {
   OpenApiComponents,
   OpenApiParameterLocation,
   OpenApiSchemaObject,
-  OpenApiSecurityScheme,
   RequestBodyEditorMode,
   RequestBodyFormInput,
   RequestBodyFormValueMap,
-  RequestEmulatorAuthInput,
   RequestEmulatorExecutionState,
   RequestEmulatorParamInput,
   RequestEmulatorPreparedRequest,
@@ -25,7 +24,6 @@ import {
 } from './requestBodyFormState'
 import { resolveRequestBodyFormInputs } from './requestBodyInputResolver'
 import {
-  applySecurityHeader,
   buildCurlCommand,
   buildRequestUrl,
   interpolatePathParams,
@@ -43,8 +41,7 @@ interface UseRequestEmulatorOptions {
   method: ComputedRef<IMethod | undefined>
   parameters: ComputedRef<IParameter[]>
   components: ComputedRef<OpenApiComponents>
-  securityKey: ComputedRef<string | null>
-  securityScheme: ComputedRef<OpenApiSecurityScheme | null>
+  authorization: ComputedRef<AuthorizationResolveResult | null>
   baseApiUrl: ComputedRef<string>
   requestTimeoutMs?: number
 }
@@ -166,6 +163,31 @@ function buildCookieHeader(inputs: RequestEmulatorParamInput[]): string | null {
   }
 
   return pairs.map(([name, value]) => `${name}=${value}`).join('; ')
+}
+
+function mergeCookieHeaders(baseCookieHeader: string | null, authCookies: Record<string, string>): string | null {
+  const segments: string[] = []
+  if (baseCookieHeader) {
+    segments.push(...baseCookieHeader.split(';').map(part => part.trim()).filter(Boolean))
+  }
+
+  Object.entries(authCookies).forEach(([key, value]) => {
+    const normalized = value.trim()
+    if (!normalized) {
+      return
+    }
+
+    const prefix = `${key}=`
+    const existingIndex = segments.findIndex(segment => segment.startsWith(prefix))
+    const nextSegment = `${key}=${normalized}`
+    if (existingIndex >= 0) {
+      segments[existingIndex] = nextSegment
+    } else {
+      segments.push(nextSegment)
+    }
+  })
+
+  return segments.length > 0 ? segments.join('; ') : null
 }
 
 function parseResponseBody(text: string, contentType: string | null): {
@@ -291,10 +313,6 @@ function appendSearchParamValue(
 export function useRequestEmulator(options: UseRequestEmulatorOptions) {
   const paramInputs = ref<RequestEmulatorParamInput[]>([])
   const emittedWarnings = ref<Set<string>>(new Set())
-  const auth = ref<RequestEmulatorAuthInput>({
-    securityKey: null,
-    token: '',
-  })
   const bodyEditorMode = ref<RequestBodyEditorMode>('json')
   const requestBodyText = ref('')
   const requestBodyJsonWarning = ref<string | null>(null)
@@ -551,12 +569,24 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       return null
     }
 
-    const query = serializeQueryParams(queryValues.value)
+    const authorization = options.authorization.value
+    const querySource: Record<string, string | string[]> = {
+      ...queryValues.value,
+    }
+    Object.entries(authorization?.target.query ?? {}).forEach(([key, value]) => {
+      querySource[key] = value
+    })
+
+    const query = serializeQueryParams(querySource)
     const url = buildRequestUrl(options.baseApiUrl.value, requestPath.value.path, query)
-    const headers: Record<string, string> = { ...headerValues.value }
+    const headers: Record<string, string> = {
+      ...headerValues.value,
+      ...(authorization?.target.headers ?? {}),
+    }
     const cookieHeader = buildCookieHeader(paramInputs.value)
-    if (cookieHeader) {
-      headers.Cookie = cookieHeader
+    const mergedCookieHeader = mergeCookieHeaders(cookieHeader, authorization?.target.cookies ?? {})
+    if (mergedCookieHeader) {
+      headers.Cookie = mergedCookieHeader
     }
 
     const hasTransportBody = transportRequestBody.value !== null
@@ -565,23 +595,23 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       headers['Content-Type'] = bodyMeta.value.contentType
     }
 
-    const securityResult = applySecurityHeader({
-      headers,
-      securityScheme: options.securityScheme.value,
-      securityKey: auth.value.securityKey,
-      token: auth.value.token,
+    authorization?.warnings.forEach((message) => {
+      emitWarningOnce(`[useRequestEmulator] Security resolution warning: ${message}`)
     })
 
-    securityResult.warnings.forEach((message) => {
-      emitWarningOnce(`[useRequestEmulator] Security configuration warning: ${message}`)
-    })
+    if (authorization && !authorization.hasSatisfiedRequirement && authorization.missingKeys.length > 0) {
+      emitWarningOnce('[useRequestEmulator] Security requirement is not fully satisfied', {
+        missingKeys: authorization.missingKeys,
+      })
+    }
+
     const bodyText = transportRequestBodyText.value
     const body = transportRequestBody.value
 
     const prepared: RequestEmulatorPreparedRequest = {
       url,
       method: endpoint.method,
-      headers: securityResult.headers,
+      headers,
       bodyText,
       body,
       curl: '',
@@ -599,11 +629,6 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       .filter((input): input is RequestEmulatorParamInput => input !== null)
 
     paramInputs.value = nextInputs
-
-    auth.value = {
-      securityKey: options.securityKey.value,
-      token: '',
-    }
     emittedWarnings.value = new Set()
     requestBodyJsonWarning.value = null
 
@@ -746,10 +771,6 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     { immediate: true },
   )
 
-  watch(options.securityKey, (value) => {
-    auth.value.securityKey = value
-  })
-
   watch(
     requestBodyFormValues,
     () => {
@@ -782,7 +803,6 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
   })
 
   return {
-    auth,
     bodyEditorMode,
     hasRequestBody,
     isJsonRequestBody,

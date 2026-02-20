@@ -31,6 +31,49 @@ export interface OpenApiSecurityScheme {
   in?: string
   description?: string
   bearerFormat?: string
+  openIdConnectUrl?: string
+  flows?: Record<string, unknown>
+}
+
+export type OpenApiSecurityRequirement = Record<string, string[]>
+
+export type NormalizedSecuritySchemeKind = 'http-bearer'
+  | 'http-basic'
+  | 'api-key-header'
+  | 'api-key-query'
+  | 'api-key-cookie'
+  | 'oauth2-bearer'
+  | 'openid-connect-bearer'
+  | 'unsupported'
+
+export interface NormalizedSecuritySchemeMeta {
+  key: string
+  type: string
+  kind: NormalizedSecuritySchemeKind
+  supported: boolean
+  label: string
+  description: string
+  headerName: string | null
+  queryName: string | null
+  cookieName: string | null
+}
+
+export interface ViewerAuthorizationState {
+  bySchemeKey: Record<string, string>
+}
+
+export interface AuthorizationTarget {
+  headers: Record<string, string>
+  query: Record<string, string>
+  cookies: Record<string, string>
+}
+
+export interface AuthorizationResolveResult {
+  target: AuthorizationTarget
+  appliedKeys: string[]
+  missingKeys: string[]
+  warnings: string[]
+  hasSatisfiedRequirement: boolean
 }
 
 export type OpenApiParameterLocation = 'path' | 'query' | 'header' | 'cookie'
@@ -104,11 +147,6 @@ export type RequestBodyFormValueMap = Record<string, RequestEmulatorParamValue>
 export interface RequestBodyFormResolutionResult {
   inputs: RequestBodyFormInput[]
   warnings: string[]
-}
-
-export interface RequestEmulatorAuthInput {
-  securityKey: string | null
-  token: string
 }
 
 export interface RequestEmulatorValidationError {
@@ -213,7 +251,7 @@ export interface IMethod {
     url: string
     description?: string
   }>
-  security?: Array<Record<string, string[]>>
+  security?: OpenApiSecurityRequirement[]
 }
 
 export interface PathsObject {
@@ -277,6 +315,7 @@ export interface IApiSpec {
   }>
   paths: PathsObject
   components?: OpenApiComponents
+  security?: OpenApiSecurityRequirement[]
   tags?: Array<{
     name: string
     description?: string

@@ -1,19 +1,32 @@
 <script setup lang="ts">
 import type { SwaggerSchemaLoadError } from '../composables/useSwaggerSchema'
-import type { HttpMethod, IApiSpec, OpenApiComponents, OpenApiSecurityScheme } from '../types'
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import type {
+  HttpMethod,
+  IApiSpec,
+  OpenApiComponents,
+  OpenApiSecurityScheme,
+} from '../types'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import { resolveAnchorFromLocation } from '../composables/navigationAnchor'
 import { generateExampleFromSchema } from '../composables/schemaExample'
 import { useCopy } from '../composables/useCopy'
 import { useSelectedOperation } from '../composables/useSelectedOperation'
 import { useSwaggerNavigation } from '../composables/useSwaggerNavigation'
 import { useSwaggerSchema } from '../composables/useSwaggerSchema'
+import { useViewerAuthorization } from '../composables/useViewerAuthorization'
 import ContentNavigation from './ContentNavigation.vue'
 import EndpointRequestCard from './EndpointRequestCard.vue'
 import RequestBodyCard from './RequestBodyCard.vue'
 import RequestParametersList from './RequestParametersList.vue'
 import ResponseExampleCard from './ResponseExampleCard.vue'
 import SchemaDetailCard from './SchemaDetailCard.vue'
+import ViewerAuthorizationPanel from './ViewerAuthorizationPanel.vue'
 
 interface SwaggerViewerProps {
   schemaSource?: string
@@ -40,6 +53,12 @@ const emit = defineEmits<{
   (e: 'schemaLoaded', schema: IApiSpec): void
 }>()
 
+const HISTORY_LOCATION_CHANGE_EVENT = 'swagger-ui:history-location-change'
+
+type PatchedWindow = Window & {
+  __SWAGGER_UI_HISTORY_PATCHED__?: boolean
+}
+
 const { copyContent } = useCopy()
 
 const {
@@ -60,7 +79,7 @@ const {
   getMethodConfig,
   getParameters,
   getRequestBodySchema,
-  getSecurity,
+  getSecurityRequirements,
 } = useSelectedOperation({ schema, navigationIndex })
 
 const normalizedBaseApiUrl = computed(() => props.baseApiUrl.replace(/\/+$/, ''))
@@ -68,6 +87,20 @@ const title = computed(() => schema.value?.info?.title ?? props.titleFallback)
 const description = computed(() => schema.value?.info?.description ?? props.descriptionFallback)
 const components = computed<OpenApiComponents>(() => schema.value?.components ?? {})
 const securitySchemes = computed<Record<string, OpenApiSecurityScheme>>(() => schema.value?.components?.securitySchemes ?? {})
+const {
+  state: authorizationState,
+  schemeMetaList,
+  hasSchemes,
+  isAuthorized,
+  authorizedCount,
+  setCredential,
+  clearCredential,
+  resetAllCredentials,
+  resolveForRequirements,
+} = useViewerAuthorization({
+  securitySchemes,
+})
+const isAuthorizeModalOpen = ref(false)
 
 const selectedEndpointMethod = computed(() => {
   if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
@@ -93,20 +126,21 @@ const selectedEndpointRequestBody = computed(() => {
   return getRequestBodySchema(selectedItem.value.operationId)
 })
 
-const selectedEndpointSecurityKey = computed(() => {
+const selectedEndpointSecurityRequirements = computed(() => {
   if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
-    return null
+    return []
   }
 
-  return getSecurity(selectedItem.value.operationId)
+  return getSecurityRequirements(selectedItem.value.operationId)
 })
 
-const selectedEndpointSecurityScheme = computed(() => {
-  if (!selectedEndpointSecurityKey.value) {
-    return null
-  }
+const selectedEndpointAuthorization = computed(() => {
+  return resolveForRequirements(selectedEndpointSecurityRequirements.value)
+})
 
-  return securitySchemes.value[selectedEndpointSecurityKey.value] ?? null
+const selectedEndpointSecurityKeys = computed(() => {
+  const keys = selectedEndpointSecurityRequirements.value.flatMap(requirement => Object.keys(requirement))
+  return Array.from(new Set(keys))
 })
 
 const selectedEndpoint = computed(() => {
@@ -118,6 +152,7 @@ const selectedEndpoint = computed(() => {
 })
 
 const SELECTION_QUERY_KEYS = ['anchor', 'operation', 'schema']
+let skipNextLocationSync = false
 
 const example = computed(() => {
   if (!selectedItem.value || selectedItem.value.type !== 'schema') {
@@ -125,6 +160,28 @@ const example = computed(() => {
   }
 
   return generateExampleFromSchema(selectedItem.value.schema, components.value)
+})
+
+const securityOverviewLabel = computed(() => {
+  return hasSchemes.value
+    ? `Security ${authorizedCount.value}/${schemeMetaList.value.length}`
+    : 'Security'
+})
+
+const securityOverviewColor = computed<'primary' | 'neutral'>(() => {
+  return isAuthorized.value ? 'primary' : 'neutral'
+})
+
+const authorizeButtonColor = computed<'primary' | 'neutral'>(() => {
+  return isAuthorized.value ? 'primary' : 'neutral'
+})
+
+const endpointSecuritySummary = computed(() => {
+  if (!selectedEndpointSecurityKeys.value.length) {
+    return 'No auth required for selected endpoint.'
+  }
+
+  return `Selected endpoint requires: ${selectedEndpointSecurityKeys.value.join(', ')}`
 })
 
 async function initializeSchema() {
@@ -176,7 +233,11 @@ function replaceLocationSelectionAnchor(anchor: string | null) {
     return
   }
 
+  skipNextLocationSync = true
   window.history.replaceState(window.history.state, '', nextRelative)
+  queueMicrotask(() => {
+    skipNextLocationSync = false
+  })
 }
 
 function copySelectionLink() {
@@ -195,6 +256,10 @@ function copySelectionLink() {
   })
   url.hash = selectedAnchor.value
   copyContent(url.toString())
+}
+
+function openAuthorizeModal() {
+  isAuthorizeModalOpen.value = true
 }
 
 function applySelectionFromLocation(source: 'init' | 'navigation') {
@@ -220,7 +285,45 @@ function applySelectionFromLocation(source: 'init' | 'navigation') {
 }
 
 function handleBrowserLocationChange() {
+  if (skipNextLocationSync) {
+    return
+  }
+
   applySelectionFromLocation('navigation')
+}
+
+function emitHistoryLocationChange() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(new Event(HISTORY_LOCATION_CHANGE_EVENT))
+}
+
+function patchHistoryLocationEvents() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const patchedWindow = window as PatchedWindow
+  if (patchedWindow.__SWAGGER_UI_HISTORY_PATCHED__) {
+    return
+  }
+
+  const originalPushState = window.history.pushState.bind(window.history)
+  const originalReplaceState = window.history.replaceState.bind(window.history)
+
+  window.history.pushState = ((...args: Parameters<History['pushState']>) => {
+    originalPushState(...args)
+    emitHistoryLocationChange()
+  }) as History['pushState']
+
+  window.history.replaceState = ((...args: Parameters<History['replaceState']>) => {
+    originalReplaceState(...args)
+    emitHistoryLocationChange()
+  }) as History['replaceState']
+
+  patchedWindow.__SWAGGER_UI_HISTORY_PATCHED__ = true
 }
 
 function badgeColor(method: HttpMethod): 'primary' | 'secondary' | 'warning' | 'error' | 'info' {
@@ -240,9 +343,12 @@ function badgeColor(method: HttpMethod): 'primary' | 'secondary' | 'warning' | '
 }
 
 onMounted(async () => {
+  patchHistoryLocationEvents()
+
   if (typeof window !== 'undefined') {
     window.addEventListener('hashchange', handleBrowserLocationChange)
     window.addEventListener('popstate', handleBrowserLocationChange)
+    window.addEventListener(HISTORY_LOCATION_CHANGE_EVENT, handleBrowserLocationChange)
   }
 
   await initializeSchema()
@@ -255,6 +361,7 @@ onBeforeUnmount(() => {
 
   window.removeEventListener('hashchange', handleBrowserLocationChange)
   window.removeEventListener('popstate', handleBrowserLocationChange)
+  window.removeEventListener(HISTORY_LOCATION_CHANGE_EVENT, handleBrowserLocationChange)
 })
 
 watch(selectedAnchor, (anchor) => {
@@ -282,7 +389,93 @@ watch(selectedAnchor, (anchor) => {
           :title="title"
           :description="description"
           :headline="schemaHeadline"
-        />
+        >
+          <template #links>
+            <div class="flex items-center gap-2">
+              <UPopover
+                arrow
+                :content="{ side: 'bottom', align: 'end' }"
+              >
+                <UButton
+                  size="sm"
+                  variant="soft"
+                  :color="securityOverviewColor"
+                  icon="i-lucide-shield-check"
+                >
+                  {{ securityOverviewLabel }}
+                </UButton>
+
+                <template #content>
+                  <div class="p-3 w-80 space-y-3">
+                    <p class="text-sm font-semibold text-highlighted">
+                      Security Overview
+                    </p>
+                    <p class="text-xs text-muted">
+                      {{ endpointSecuritySummary }}
+                    </p>
+                    <div
+                      v-if="schemeMetaList.length"
+                      class="space-y-2"
+                    >
+                      <div
+                        v-for="scheme in schemeMetaList"
+                        :key="scheme.key"
+                        class="rounded border border-default px-2 py-1.5"
+                      >
+                        <div class="flex items-center justify-between gap-2">
+                          <code class="text-xs font-mono text-primary">{{ scheme.key }}</code>
+                          <UBadge
+                            size="sm"
+                            :color="authorizationState.bySchemeKey[scheme.key]?.trim() ? 'success' : 'neutral'"
+                            variant="soft"
+                          >
+                            {{ authorizationState.bySchemeKey[scheme.key]?.trim() ? 'Authorized' : 'Empty' }}
+                          </UBadge>
+                        </div>
+                        <p class="text-xs text-muted mt-1">
+                          {{ scheme.kind }}
+                        </p>
+                      </div>
+                    </div>
+                    <p
+                      v-else
+                      class="text-xs text-muted"
+                    >
+                      No security schemes in schema.
+                    </p>
+                  </div>
+                </template>
+              </UPopover>
+
+              <UButton
+                size="sm"
+                variant="soft"
+                :color="authorizeButtonColor"
+                :icon="isAuthorized ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+                @click="openAuthorizeModal"
+              >
+                Authorize
+              </UButton>
+            </div>
+          </template>
+        </UPageHeader>
+
+        <UModal
+          v-model:open="isAuthorizeModalOpen"
+          title="Available authorizations"
+          description="Credentials are global for this documentation session."
+        >
+          <template #body>
+            <ViewerAuthorizationPanel
+              :schemes="schemeMetaList"
+              :credentials="authorizationState.bySchemeKey"
+              :authorized-count="authorizedCount"
+              @set-credential="setCredential"
+              @clear-credential="clearCredential"
+              @reset-all="resetAllCredentials"
+            />
+          </template>
+        </UModal>
 
         <UPageBody v-if="isLoading">
           <UCard>
@@ -370,37 +563,6 @@ watch(selectedAnchor, (anchor) => {
               </p>
 
               <div class="mt-6 space-y-4">
-                <div v-if="selectedEndpointSecurityKey && selectedEndpointSecurityScheme">
-                  <USeparator label="Security" />
-                  <div class="space-y-1 mt-2">
-                    <div class="border border-default bg-muted/10 dark:bg-muted/20 rounded p-3">
-                      <div class="flex justify-between items-center">
-                        <div class="text-sm font-semibold text-muted-foreground">
-                          {{ selectedEndpointSecurityKey }}
-                        </div>
-                        <UBadge
-                          size="md"
-                          variant="soft"
-                        >
-                          {{ selectedEndpointSecurityScheme.type }} {{ selectedEndpointSecurityScheme.scheme ? `(${selectedEndpointSecurityScheme.scheme})` : '' }}
-                        </UBadge>
-                      </div>
-                      <p
-                        v-if="selectedEndpointSecurityScheme.description"
-                        class="text-xs text-muted mt-1"
-                      >
-                        {{ selectedEndpointSecurityScheme.description }}
-                      </p>
-                      <p
-                        v-if="selectedEndpointSecurityScheme.name && selectedEndpointSecurityScheme.in"
-                        class="text-xs text-muted"
-                      >
-                        <code class="font-mono">{{ selectedEndpointSecurityScheme.name }}</code> in <code class="font-mono">{{ selectedEndpointSecurityScheme.in }}</code>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div class="py-2">
                   <RequestParametersList :parameters="selectedEndpointParameters" />
                 </div>
@@ -448,8 +610,7 @@ watch(selectedAnchor, (anchor) => {
             :method="selectedEndpointMethod"
             :parameters="selectedEndpointParameters"
             :components="components"
-            :security-key="selectedEndpointSecurityKey"
-            :security-scheme="selectedEndpointSecurityScheme"
+            :authorization="selectedEndpointAuthorization"
             :base-api-url="normalizedBaseApiUrl"
             :request-timeout-ms="props.requestTimeoutMs"
           />

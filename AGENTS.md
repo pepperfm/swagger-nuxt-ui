@@ -31,8 +31,8 @@ app/
 lib/
 ├── index.ts                       # Public package API
 ├── types.ts                       # Public OpenAPI contracts
-├── components/                    # Library-owned UI components (SwaggerViewer, request emulator cards/editors, navigation, schema cards)
-├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator + parameter/body resolvers)
+├── components/                    # Library-owned UI components (SwaggerViewer, global auth panel, request emulator cards/editors, navigation, schema cards)
+├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator, global authorization + parameter/body resolvers)
 └── styles/swagger-ui.css          # Library stylesheet
 
 bridge-viewer/
@@ -89,7 +89,9 @@ docs/
 | `lib/components/RequestBodyEditor.vue` | Dual-mode request body editor (`JSON` / `Form`) |
 | `lib/components/RequestBodyFormFields.vue` | Typed field renderer for request body form mode |
 | `lib/components/ParameterInputField.vue` | Typed parameter input renderer (Nuxt UI control mapping) |
+| `lib/components/ViewerAuthorizationPanel.vue` | Global authorization editor shown from PageHeader `Authorize` action |
 | `lib/composables/useRequestEmulator.ts` | Request state, validation, and execution flow |
+| `lib/composables/useViewerAuthorization.ts` | Global OpenAPI security credentials state + requirement resolution |
 | `lib/composables/navigationAnchor.ts` | Canonical anchor model + URL/hash/query deep-link parsing helpers |
 | `lib/composables/requestBodyInputResolver.ts` | OpenAPI requestBody schema -> form input map resolver |
 | `lib/composables/requestBodyFormState.ts` | Request body form state init/hydration/serialization helpers |
