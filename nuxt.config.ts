@@ -8,15 +8,17 @@ export default defineNuxtConfig({
   ],
 
   devtools: {
-    enabled: true,
+    enabled: false,
   },
 
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
+    swaggerSchemaSource: process.env.NUXT_SWAGGER_SCHEMA_SOURCE ?? `${process.env.NUXT_BASE_API_HOST ?? 'http://localhost'}/docs?api-docs.json`,
     public: {
       apiHost: process.env.NUXT_BASE_API_HOST ?? 'http://localhost',
       apiUrl: process.env.NUXT_BASE_API_URL ?? 'http://localhost/api',
+      swaggerSchemaSource: process.env.NUXT_SWAGGER_SCHEMA_SOURCE ?? `${process.env.NUXT_BASE_API_HOST ?? 'http://localhost'}/docs?api-docs.json`,
     },
   },
 

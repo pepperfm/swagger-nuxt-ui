@@ -33,7 +33,6 @@ function resolveSchemaNode(
 
   const ref = schema.$ref.replace('#/components/schemas/', '')
   if (visitedRefs.includes(ref)) {
-    console.warn('[SchemaDetailCard] Circular schema $ref detected', { ref, visitedRefs })
     return {}
   }
 
@@ -106,7 +105,6 @@ function resolveArrayItemSchema(
   if (items.$ref) {
     const ref = items.$ref.replace('#/components/schemas/', '')
     if (visitedRefs.includes(ref)) {
-      console.warn('[SchemaDetailCard] Circular array item $ref detected', { ref, visitedRefs })
       return null
     }
 

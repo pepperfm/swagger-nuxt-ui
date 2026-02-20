@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HttpMethod, INavigationGroup, INavigationItem } from '../types'
+import { computed, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
   navigation?: INavigationGroup[]
@@ -23,6 +24,23 @@ const accordionUi = {
   label: 'ps-1 text-sm font-semibold',
   trailingIcon: 'pe-1',
 }
+
+const schemaSearchQuery = ref('')
+
+const filteredSchemaItems = computed(() => {
+  const items = props.schemas.children ?? []
+  const query = schemaSearchQuery.value.trim().toLowerCase()
+
+  if (query === '') {
+    return items
+  }
+
+  return items.filter((item) => {
+    const title = String(item.title ?? '').toLowerCase()
+    const operationId = String(item.operationId ?? '').toLowerCase()
+    return title.includes(query) || operationId.includes(query)
+  })
+})
 </script>
 
 <template>
@@ -73,9 +91,16 @@ const accordionUi = {
         label="SCHEMAS"
         type="dashed"
       />
+      <UInput
+        v-model="schemaSearchQuery"
+        icon="i-lucide-search"
+        size="sm"
+        placeholder="Filter schemas..."
+        class="mt-2"
+      />
       <ul class="pl-4 space-y-3 mt-2">
         <li
-          v-for="child in props.schemas.children ?? []"
+          v-for="child in filteredSchemaItems"
           :key="child._path"
         >
           <button
@@ -91,6 +116,12 @@ const accordionUi = {
           </button>
         </li>
       </ul>
+      <p
+        v-if="schemaSearchQuery && filteredSchemaItems.length === 0"
+        class="pl-4 mt-2 text-xs text-muted"
+      >
+        No schemas found
+      </p>
     </div>
   </div>
 </template>

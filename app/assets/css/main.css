@@ -3,13 +3,6 @@
 @import "../../../lib/styles/swagger-ui.css";
 
 @theme static {
-  /*--font-sans: 'Public Sans', sans-serif;*/
-  /*--font-sans: 'Manrope', sans-serif;*/
-  /*--font-sans: 'Exo 2', sans-serif;*/
-  --font-sans: 'Lexend', sans-serif;
-  /*--font-sans: 'Sora', sans-serif;*/
-  --font-accent: 'Orbitron', sans-serif;
-
   --color-green-50: #EFFDF5;
   --color-green-100: #D9FBE8;
   --color-green-200: #B3F5D1;
@@ -21,4 +14,13 @@
   --color-green-800: #016538;
   --color-green-900: #0A5331;
   --color-green-950: #052E16;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#__nuxt {
+  min-height: 100vh;
 }

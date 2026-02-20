@@ -33,7 +33,7 @@ function generateExampleInternal(
   }
 
   if (state.nodeStack.has(schema)) {
-    console.warn('[generateExampleFromSchema] Circular schema node reference detected')
+    // Circular schema nodes are valid in OpenAPI; stop recursion silently.
     return null
   }
 
@@ -50,7 +50,7 @@ function generateExampleInternal(
     if (schema.$ref) {
       const ref = schema.$ref.replace('#/components/schemas/', '')
       if (state.refStack.has(ref)) {
-        console.warn('[generateExampleFromSchema] Circular $ref detected', { ref })
+        // Circular refs are expected in some specs; avoid noisy WARN logs.
         return null
       }
 

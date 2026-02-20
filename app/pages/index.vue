@@ -7,7 +7,7 @@ const toast = useToast()
 
 const runtimeConfig = useRuntimeConfig()
 const baseApiUrl = computed(() => String(runtimeConfig.public.apiUrl ?? '').replace(/\/+$/, ''))
-const localSchemaPath = './resources/api-docs/api-docs.json'
+const schemaHeadline = computed(() => String(runtimeConfig.public.swaggerSchemaSource ?? '').trim())
 
 function onSchemaError(error: SwaggerSchemaLoadError) {
   toast.add({
@@ -25,9 +25,9 @@ function onSchemaError(error: SwaggerSchemaLoadError) {
       <SwaggerViewer
         schema-source="/api/swagger-ui"
         :base-api-url="baseApiUrl"
-        :schema-headline="localSchemaPath"
+        :schema-headline="schemaHeadline"
         title-fallback="Local API Docs"
-        description-fallback="OpenAPI schema loaded from local resources file"
+        description-fallback="OpenAPI schema loaded from configured source"
         @schema-error="onSchemaError"
       />
     </ClientOnly>

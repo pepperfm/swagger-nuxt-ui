@@ -3,19 +3,56 @@ import { resolve } from 'node:path'
 import process from 'node:process'
 import { createError } from 'h3'
 
-const LOCAL_SCHEMA_FILE = resolve(process.cwd(), 'resources/api-docs/api-docs.json')
-
 export default defineEventHandler(async () => {
+  const runtimeConfig = useRuntimeConfig()
+  const schemaSource = String(runtimeConfig.swaggerSchemaSource ?? '').trim()
+
+  if (!schemaSource) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Swagger schema source is not configured',
+      message: 'Set runtimeConfig.swaggerSchemaSource (NUXT_SWAGGER_SCHEMA_SOURCE).',
+    })
+  }
+
+  if (schemaSource.startsWith('http://') || schemaSource.startsWith('https://')) {
+    try {
+      const response = await fetch(schemaSource, {
+        headers: {
+          accept: 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Unexpected status ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('[server/api/swagger] Failed to load schema from configured URL', {
+        source: schemaSource,
+        error: error instanceof Error ? error.message : error,
+      })
+      throw createError({
+        statusCode: 502,
+        statusMessage: 'Failed to fetch OpenAPI schema',
+        message: `Cannot fetch schema from ${schemaSource}`,
+        cause: error,
+      })
+    }
+  }
+
   let fileContent = ''
+  const localSchemaFile = resolve(process.cwd(), schemaSource)
 
   try {
-    fileContent = await readFile(LOCAL_SCHEMA_FILE, 'utf-8')
+    fileContent = await readFile(localSchemaFile, 'utf-8')
   } catch (error) {
-    console.warn('[server/api/swagger] Local schema file is missing', { file: LOCAL_SCHEMA_FILE })
+    console.warn('[server/api/swagger] Configured schema file is missing', { file: localSchemaFile })
     throw createError({
       statusCode: 404,
       statusMessage: 'OpenAPI schema file not found',
-      message: 'Expected schema file at resources/api-docs/api-docs.json',
+      message: `Expected schema file at ${localSchemaFile}`,
       cause: error,
     })
   }

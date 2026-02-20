@@ -1,22 +1,12 @@
 <script setup lang="ts">
 import type { OpenApiSchemaObject } from '../types'
-import { useClipboard } from '@vueuse/core'
+import { useCopy } from '../composables/useCopy'
 
 const props = defineProps<{
   schema?: Record<string, OpenApiSchemaObject>
 }>()
 
-const { copy } = useClipboard()
-
-async function copyContent(content: unknown) {
-  const normalized = typeof content === 'string' ? content : JSON.stringify(content, null, 2)
-
-  try {
-    await copy(normalized)
-  } catch (error) {
-    console.warn('[RequestBodyCard] Failed to copy request body content', error)
-  }
-}
+const { copyContent } = useCopy()
 
 function renderItems(items?: OpenApiSchemaObject): string[] {
   if (!items) {

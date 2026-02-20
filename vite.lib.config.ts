@@ -16,7 +16,12 @@ export default defineConfig({
       cssFileName: 'swagger-ui',
     },
     rollupOptions: {
-      external: ['vue', '@nuxt/ui', '@vueuse/core'],
+      external: id => (
+        id === 'vue'
+        || id === '@vueuse/core'
+        || id === '@nuxt/ui'
+        || id.startsWith('@nuxt/ui/')
+      ),
       output: {
         exports: 'named',
         globals: {
