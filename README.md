@@ -71,8 +71,8 @@ Generated outputs:
 
 ```vue
 <script setup lang="ts">
-import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
-import '@pepperfm/swagger-nuxt-ui/styles.css'
+import { SwaggerViewer } from '@pepper_fm/swagger-nuxt-ui'
+import '@pepper_fm/swagger-nuxt-ui/styles.css'
 </script>
 
 <template>

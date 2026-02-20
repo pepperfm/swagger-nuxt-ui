@@ -6,7 +6,7 @@
 Nuxt 4 + Nuxt UI 4 repository with dual purpose:
 
 - Demo application for browsing local OpenAPI schema.
-- Reusable Vue library package (`@pepperfm/swagger-nuxt-ui`) sourced from `lib/`.
+- Reusable Vue library package (`@pepper_fm/swagger-nuxt-ui`) sourced from `lib/`.
 - Laravel bridge Composer package (`pepperfm/swagger-ui-laravel-bridge`) sourced from `packages/laravel-bridge`.
 
 ## Tech Stack

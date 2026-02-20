@@ -74,7 +74,7 @@ Logs:
 
 ## Library Exports
 
-Entry: `@pepperfm/swagger-nuxt-ui`
+Entry: `@pepper_fm/swagger-nuxt-ui`
 
 - `SwaggerViewer`
 - `ContentNavigation`
@@ -91,7 +91,7 @@ Entry: `@pepperfm/swagger-nuxt-ui`
 
 Styles entry:
 
-- `@pepperfm/swagger-nuxt-ui/styles.css`
+- `@pepper_fm/swagger-nuxt-ui/styles.css`
 
 ## `SwaggerViewer` Component Contract
 
