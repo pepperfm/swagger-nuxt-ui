@@ -6,22 +6,21 @@
 
 ### `GET /api/swagger`
 
-Fetches and returns remote Swagger/OpenAPI JSON.
-
-#### Query Parameters
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `url` | string | Yes | Absolute URL to OpenAPI JSON |
+Returns OpenAPI JSON from local file `resources/api-docs/api-docs.json`.
 
 #### Success Response
 
-- Returns upstream JSON payload unchanged.
+- `200` with parsed JSON payload.
 
 #### Error Cases
 
-- Missing `url` -> `{ "error": "No url provided" }`.
-- Upstream fetch failure -> surfaced to client as a loading error in `useOpenApiSchema`.
+- Missing schema file -> `404` + message `Expected schema file at resources/api-docs/api-docs.json`.
+- Invalid schema JSON -> `500` + message `Schema file is not valid JSON`.
+
+Logging:
+
+- Missing file logs `WARN` in `server/api/swagger.ts`.
+- Parse failure logs `ERROR` in `server/api/swagger.ts`.
 
 ## Client-Side API Surface
 
@@ -29,10 +28,29 @@ Fetches and returns remote Swagger/OpenAPI JSON.
 
 Returns:
 
-- `schema`: reactive OpenAPI document.
+- `schema`: reactive OpenAPI document (`IApiSpec | null`).
 - `isLoading`: loading state.
-- `loadError`: string message for UI feedback.
-- `loadSchema(url: string)`: performs fetch via `/api/swagger` and updates state.
+- `loadError`: typed load error (`missing_source`, `invalid_schema`, `fetch_error`).
+- `defaultSchemaEndpoint`: default endpoint (`/api/swagger`).
+- `loadSchema(source?)`: loads schema and normalizes errors.
+
+### `useSwaggerNavigation()` (`app/composables/useSwaggerNavigation.ts`)
+
+Returns:
+
+- `endpointNavigation`: grouped endpoint navigation by first tag.
+- `schemaNavigation`: schemas navigation derived from `components.schemas`.
+
+### `useSelectedOperation()` (`app/composables/useSelectedOperation.ts`)
+
+Returns:
+
+- `selectedItem`: current endpoint/schema selection.
+- `onSelect(item)`: updates selection.
+- `getMethodConfig(operationId)`
+- `getParameters(operationId)`
+- `getRequestBodySchema(operationId)`
+- `getSecurity(operationId)`
 
 ### `generateExampleFromSchema()` (`app/composables/schemaExample.ts`)
 
@@ -40,11 +58,10 @@ Generates example values from OpenAPI schema nodes, including:
 
 - `$ref` resolution via `components.schemas`
 - `allOf` / `oneOf` / `anyOf` handling
-- primitives (`string`, `number`, `boolean`, etc.)
-- nested objects and arrays
+- primitives and nested objects/arrays
 
 ## See Also
 
 - [Architecture](architecture.md) - where API logic sits in layers.
-- [Getting Started](getting-started.md) - how to run and use endpoint flow.
+- [Getting Started](getting-started.md) - local schema setup.
 - [Configuration](configuration.md) - runtime config defaults.

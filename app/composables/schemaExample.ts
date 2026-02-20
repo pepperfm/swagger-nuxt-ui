@@ -1,4 +1,9 @@
-export function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
+import type { OpenApiComponents, OpenApiSchemaObject } from '~/types/types'
+
+export function generateExampleFromSchema(
+  schema: OpenApiSchemaObject | undefined,
+  components: OpenApiComponents = {},
+): unknown {
   if (!schema || typeof schema !== 'object') {
     return null
   }
@@ -19,9 +24,12 @@ export function generateExampleFromSchema(schema: any, components: Record<string
   }
 
   if (schema.allOf) {
-    return schema.allOf.reduce((acc: any, part: any) => {
+    return schema.allOf.reduce<Record<string, unknown>>((acc, part) => {
       const partExample = generateExampleFromSchema(part, components)
-      return { ...acc, ...partExample }
+      return {
+        ...acc,
+        ...(typeof partExample === 'object' && partExample ? partExample as Record<string, unknown> : {}),
+      }
     }, {})
   }
 
@@ -30,15 +38,18 @@ export function generateExampleFromSchema(schema: any, components: Record<string
   }
 
   if (schema.anyOf) {
-    return schema.anyOf.reduce((acc: any, part: any) => {
+    return schema.anyOf.reduce<Record<string, unknown>>((acc, part) => {
       const partExample = generateExampleFromSchema(part, components)
-      return { ...acc, ...partExample }
+      return {
+        ...acc,
+        ...(typeof partExample === 'object' && partExample ? partExample as Record<string, unknown> : {}),
+      }
     }, {})
   }
 
   switch (schema.type) {
     case 'object': {
-      const result: Record<string, any> = {}
+      const result: Record<string, unknown> = {}
       const props = schema.properties || {}
       for (const [key, propSchema] of Object.entries(props)) {
         result[key] = generateExampleFromSchema(propSchema, components)

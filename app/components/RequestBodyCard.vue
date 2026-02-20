@@ -1,27 +1,17 @@
 <script setup lang="ts">
+import type { OpenApiSchemaObject } from '~/types/types'
 import { useClipboard } from '@vueuse/core'
 
-defineProps<{
-  schema: Record<string, {
-    description?: string
-    type?: string
-    format?: string
-    enum?: string[]
-    nullable?: boolean
-    required?: boolean
-    default?: any
-    example?: any
-    minLength?: number
-    maxLength?: number
-    items?: any
-  }>
+const props = defineProps<{
+  schema: Record<string, OpenApiSchemaObject>
 }>()
 
 const toast = useToast()
 const { copy } = useClipboard()
 
-function copyContent(content: string) {
-  copy(content)
+function copyContent(content: unknown) {
+  const normalized = typeof content === 'string' ? content : JSON.stringify(content, null, 2)
+  copy(normalized)
   toast.add({
     title: 'Copied!',
     color: 'success',
@@ -29,7 +19,7 @@ function copyContent(content: string) {
   })
 }
 
-function renderItems(items: any, level = 0) {
+function renderItems(items?: OpenApiSchemaObject): string | null {
   if (!items) {
     return null
   }
@@ -40,7 +30,7 @@ function renderItems(items: any, level = 0) {
     lines.push(`Items type: <code class='font-mono'>${items.type}</code>`)
   }
 
-  if (items.format) {
+  if (items.format && lines.length) {
     lines[lines.length - 1] += ` · Format: <code class='font-mono'>${items.format}</code>`
   }
 
@@ -49,30 +39,30 @@ function renderItems(items: any, level = 0) {
   }
 
   if (items.enum?.length) {
-    const badges = items.enum.map((e: string) => `<span class='badge'>${e}</span>`).join(' ')
+    const badges = items.enum.map(value => `<span class='badge'>${String(value)}</span>`).join(' ')
     lines.push(`Enum: ${badges}`)
   }
 
   if (items.example !== undefined) {
-    lines.push(`Example: <code class='font-mono'>${items.example}</code>`)
+    lines.push(`Example: <code class='font-mono'>${String(items.example)}</code>`)
   }
 
   if (items.minLength !== undefined || items.maxLength !== undefined) {
-    let len = ''
+    let lengthInfo = ''
     if (items.minLength !== undefined) {
-      len += `Min length: ${items.minLength}`
+      lengthInfo += `Min length: ${items.minLength}`
     }
     if (items.minLength !== undefined && items.maxLength !== undefined) {
-      len += ' · '
+      lengthInfo += ' · '
     }
     if (items.maxLength !== undefined) {
-      len += `Max length: ${items.maxLength}`
+      lengthInfo += `Max length: ${items.maxLength}`
     }
-    lines.push(len)
+    lines.push(lengthInfo)
   }
 
   if (items.items) {
-    lines.push(renderItems(items.items, level + 1) ?? '')
+    lines.push(renderItems(items.items) ?? '')
   }
 
   return lines.map(line => `<div class='mt-1 text-xs text-muted'>${line}</div>`).join('')
@@ -82,11 +72,11 @@ function renderItems(items: any, level = 0) {
 <template>
   <div class="space-y-2">
     <USeparator
-      v-if="schema"
+      v-if="Object.keys(props.schema).length"
       label="Body"
     />
     <div
-      v-for="(prop, name) in schema"
+      v-for="(prop, name) in props.schema"
       :key="name"
       class="rounded-lg border border-muted p-4 bg-muted/10 dark:bg-muted/20"
     >
@@ -98,7 +88,7 @@ function renderItems(items: any, level = 0) {
           {{ name }}
         </div>
         <UBadge
-          :color="prop.required ? 'error' : prop.nullable ? 'warning' : 'info'"
+          :color="prop.required === true ? 'error' : prop.nullable ? 'warning' : 'info'"
           size="sm"
           variant="soft"
           class="uppercase"
@@ -108,10 +98,10 @@ function renderItems(items: any, level = 0) {
       </div>
 
       <p
-        v-if="false"
+        v-if="prop.description"
         class="text-xs text-muted-foreground mt-1"
       >
-        {{ prop.description || 'No description' }}
+        {{ prop.description }}
       </p>
 
       <div
@@ -174,7 +164,7 @@ function renderItems(items: any, level = 0) {
         <pre
           class="font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-40 cursor-pointer bg-gray-100 dark:bg-muted/50"
           @click="copyContent(prop.example)"
-        >{{ prop.example }}</pre>
+        >{{ typeof prop.example === 'string' ? prop.example : JSON.stringify(prop.example, null, 2) }}</pre>
       </div>
     </div>
   </div>

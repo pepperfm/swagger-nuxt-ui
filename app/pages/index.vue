@@ -1,240 +1,133 @@
 <script setup lang="ts">
-import type {
-  HttpMethod,
-  IMethod,
-  INavigationGroup,
-  INavigationItem,
-  IParameter,
-  PathsObject,
-} from '~/types/types'
-import { useClipboard, useLocalStorage } from '@vueuse/core'
+import type { HttpMethod, OpenApiComponents, OpenApiSecurityScheme } from '~/types/types'
+import { useClipboard } from '@vueuse/core'
 import { computed } from 'vue'
 import { generateExampleFromSchema } from '~/composables/schemaExample'
 import { useCopy } from '~/composables/useCopy'
 import { useOpenApiSchema } from '~/composables/useOpenApiSchema'
+import { useSelectedOperation } from '~/composables/useSelectedOperation'
+import { useSwaggerNavigation } from '~/composables/useSwaggerNavigation'
 
 const toast = useToast()
 const { copyContent } = useCopy()
 const { copy } = useClipboard()
 
+const runtimeConfig = useRuntimeConfig()
+const baseApiUrl = computed(() => String(runtimeConfig.public.apiUrl ?? '').replace(/\/+$/, ''))
+const localSchemaPath = './resources/api-docs/api-docs.json'
+
 const {
   schema,
   isLoading,
   loadSchema,
+  loadError,
 } = useOpenApiSchema()
 
-const swaggerJsonUrl = useLocalStorage('swaggerJsonUrl', '')
-const baseApiUrl = useLocalStorage('baseApiUrl', '')
-const swaggerJsonUrlInput = ref(swaggerJsonUrl.value || '')
-const baseApiUrlInput = ref(baseApiUrl.value || '')
+const { endpointNavigation, schemaNavigation } = useSwaggerNavigation(schema)
 
-async function storeUrls() {
-  baseApiUrlInput.value = baseApiUrlInput.value.trim().replace(/\/+$/, '')
-  swaggerJsonUrlInput.value = swaggerJsonUrlInput.value.trim()
+const {
+  selectedItem,
+  onSelect,
+  getMethodConfig,
+  getParameters,
+  getRequestBodySchema,
+  getSecurity,
+} = useSelectedOperation({ schema, endpointNavigation })
 
-  if (!swaggerJsonUrlInput.value || !baseApiUrlInput.value) {
+async function initializeSchema() {
+  const ok = await loadSchema()
+  if (!ok) {
     toast.add({
-      title: 'Error',
+      title: 'Schema load failed',
+      description: loadError.value?.message ?? 'Failed to load local schema.',
       color: 'error',
-      duration: 2000,
-    })
-    return
-  }
-  const ok = await loadSchema(swaggerJsonUrlInput.value)
-  if (ok) {
-    swaggerJsonUrl.value = swaggerJsonUrlInput.value
-    baseApiUrl.value = baseApiUrlInput.value
-    toast.add({
-      title: 'Fetched',
-      color: 'success',
-      duration: 2000,
+      duration: 3000,
     })
   }
 }
 
-// const { data: spec } = await useFetch<IApiSpec>(`${baseURL}/docs?api-docs.json`)
-const title = computed(() => schema.value?.info?.title)
-const description = computed(() => schema.value?.info?.description)
-const components = computed(() => schema.value?.components)
-const securitySchemes = computed(() => schema.value?.components?.securitySchemes)
+const title = computed(() => schema.value?.info?.title ?? 'Local API Docs')
+const description = computed(() => schema.value?.info?.description ?? 'OpenAPI schema loaded from local resources file')
+const components = computed<OpenApiComponents>(() => schema.value?.components ?? {})
+const securitySchemes = computed<Record<string, OpenApiSecurityScheme>>(() => schema.value?.components?.securitySchemes ?? {})
 
-const paths = computed(() => schema.value?.paths as PathsObject)
-const schemas = computed(() => schema.value?.components?.schemas ?? {})
+const selectedEndpointMethod = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
+    return undefined
+  }
 
-const endpointGroups: ComputedRef<Record<string, INavigationGroup>> = computed(() => {
-  const groups: Record<string, INavigationGroup> = {}
-  Object.entries(paths.value ?? {}).forEach(([url, methods]) => {
-    Object.entries(methods).forEach(([method, config]) => {
-      const typedConfig = config as IMethod
-      const typedMethod = method as HttpMethod
-      const tag = typedConfig.tags?.[0] ?? 'General'
-      if (!groups[tag]) {
-        groups[tag] = {
-          _path: `#tag-${tag}`,
-          title: tag,
-          children: [],
-        }
-      }
-      groups[tag].children.push({
-        _path: `#${method}-${url}`,
-        title: typedConfig.summary || 'No title provided',
-        description: typedConfig.description ?? undefined,
-        method: typedMethod,
-        operationId: typedConfig.operationId,
-      })
-    })
-  })
-  return groups
+  return getMethodConfig(selectedItem.value.operationId)
 })
 
-const endpointNavigation = computed(() => Object.values(endpointGroups.value))
-const schemaNavigation = computed((): INavigationGroup => ({
-  _path: '#schemas',
-  title: 'Schemas',
-  children: Object.keys(schemas.value).map(name => ({
-    _path: `#schema-${name}`,
-    title: name,
-    method: '',
-    operationId: `schema-${name}`,
-  })),
-}))
-
-function getMethodConfig(operationId: string): IMethod | undefined {
-  const paths = schema.value?.paths as PathsObject
-  for (const methods of Object.values(paths)) {
-    for (const methodConfig of Object.values(methods)) {
-      if (methodConfig?.operationId === operationId) {
-        return methodConfig
-      }
-    }
-  }
-}
-
-function getParameters(operationId: string) {
-  const config = getMethodConfig(operationId)
-  if (!config?.parameters) {
+const selectedEndpointParameters = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
     return []
   }
 
-  return config.parameters.map((param: IParameter) => ({
-    name: param.name,
-    in: param.in,
-    type: param.schema?.type ?? 'any',
-    required: param.required ?? false,
-    description: param.description ?? '',
-  }))
-}
+  return getParameters(selectedItem.value.operationId)
+})
 
-function getRequestBodySchema(operationId: string) {
-  const config = getMethodConfig(operationId)
-  const body = config?.requestBody
-  if (!body) {
+const selectedEndpointRequestBody = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
     return null
   }
 
-  const json = body.content?.['application/json']
-    ?? body.content?.['multipart/form-data']
-    ?? body.content?.['application/x-www-form-urlencoded']
+  return getRequestBodySchema(selectedItem.value.operationId)
+})
 
-  const schema = json?.schema
-  if (!schema || !schema.properties) {
+const selectedEndpointSecurityKey = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
     return null
   }
 
-  return schema.properties
-}
+  return getSecurity(selectedItem.value.operationId)
+})
 
-function getSecurity(operationId: string): string | null {
-  const config = getMethodConfig(operationId)
-  const security = config?.security
-  if (!security || !Array.isArray(security)) {
+const selectedEndpointSecurityScheme = computed(() => {
+  if (!selectedEndpointSecurityKey.value) {
     return null
   }
 
-  const firstSecurity = security[0]
-  if (!firstSecurity) {
-    return null
-  }
-
-  return Object.keys(firstSecurity)[0] || null
-}
-
-const selectedItem = ref<
-  | {
-    type: 'endpoint'
-    method: string
-    url: string
-    summary?: string
-    description?: string
-    operationId: string
-  }
-  | {
-    type: 'schema'
-    name: string
-    schema: Record<string, any>
-    operationId: string
-  }
-  | null
->(null)
-
-function onSelect(item: INavigationItem) {
-  const paths = schema.value?.paths as PathsObject
-  const localSchemas = schema.value?.components?.schemas || {}
-
-  if (item.method?.length) {
-    for (const [url, methods] of Object.entries(paths)) {
-      const methodConfig = methods?.[item.method as HttpMethod]
-      if (methodConfig?.operationId === item.operationId) {
-        selectedItem.value = {
-          type: 'endpoint',
-          method: item.method,
-          url,
-          summary: methodConfig.summary ?? undefined,
-          description: item.description ?? methodConfig.description ?? undefined,
-          operationId: item.operationId,
-        }
-        return
-      }
-    }
-  } else {
-    const schemaName = item.title
-    const currentSchema = localSchemas[schemaName]
-    if (currentSchema) {
-      selectedItem.value = {
-        type: 'schema',
-        name: schemaName,
-        schema: currentSchema,
-        operationId: item.operationId,
-      }
-    }
-  }
-}
+  return securitySchemes.value[selectedEndpointSecurityKey.value] ?? null
+})
 
 const example = computed(() => {
   if (!selectedItem.value || selectedItem.value.type !== 'schema') {
     return null
   }
-  return generateExampleFromSchema(selectedItem.value.schema, components.value ?? {})
+
+  return generateExampleFromSchema(selectedItem.value.schema, components.value)
 })
 
-function copyUrl() {
+async function copyUrl() {
   if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
     return
   }
+
   const url = `${baseApiUrl.value}${selectedItem.value.url}`
 
-  copy(url)
-  toast.add({
-    title: 'Copied!',
-    description: 'Endpoint URL copied to clipboard.',
-    color: 'success',
-    icon: 'i-lucide-copy',
-    duration: 2000,
-  })
+  try {
+    await copy(url)
+    toast.add({
+      title: 'Copied!',
+      description: 'Endpoint URL copied to clipboard.',
+      color: 'success',
+      icon: 'i-lucide-copy',
+      duration: 2000,
+    })
+  } catch {
+    toast.add({
+      title: 'Copy failed',
+      description: 'Unable to copy endpoint URL.',
+      color: 'error',
+      icon: 'i-lucide-alert-triangle',
+      duration: 3000,
+    })
+  }
 }
 
-function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'error' | 'info' {
-  switch (method.toLowerCase()) {
+function badgeColor(method: HttpMethod): 'primary' | 'secondary' | 'warning' | 'error' | 'info' {
+  switch (method) {
     case 'get':
       return 'primary'
     case 'post':
@@ -248,56 +141,20 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
       return 'info'
   }
 }
+
+onMounted(async () => {
+  await initializeSchema()
+})
 </script>
 
 <template>
   <div>
     <ClientOnly>
-      <UPage v-if="!swaggerJsonUrl || !baseApiUrl || !schema">
-        <UPageHero
-          title="Initial config"
-          headline="Storing in browser"
-          orientation="horizontal"
+      <UPage>
+        <template
+          v-if="schema && !isLoading"
+          #left
         >
-          <template #body>
-            <div class="flex flex-col gap-6">
-              <UFormField
-                label="Swagger json url"
-                help="Full url to your docs.json file"
-                size="xl"
-                required
-              >
-                <UInput
-                  v-model="swaggerJsonUrlInput"
-                  placeholder="https://example.com/docs?api-docs.json"
-                  class="w-full"
-                />
-              </UFormField>
-              <UFormField
-                label="API url"
-                help="Full url of your API-host"
-                size="xl"
-                required
-              >
-                <UInput
-                  v-model="baseApiUrlInput"
-                  placeholder="https://example.com/api/v1"
-                  class="w-full"
-                />
-              </UFormField>
-            </div>
-            <UButton
-              label="Submit"
-              class="mt-2"
-              :loading="isLoading"
-              loading-icon="i-lucide-loader"
-              @click="storeUrls"
-            />
-          </template>
-        </UPageHero>
-      </UPage>
-      <UPage v-else>
-        <template #left>
           <UPageAside>
             <ContentNavigation
               :navigation="endpointNavigation"
@@ -313,9 +170,39 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
           <UPageHeader
             :title="title"
             :description="description"
-            :headline="swaggerJsonUrl"
+            :headline="localSchemaPath"
           />
-          <UPageBody v-if="selectedItem">
+
+          <UPageBody v-if="isLoading">
+            <UCard>
+              <div class="flex items-center gap-3 text-sm text-muted">
+                <UIcon
+                  name="i-lucide-loader"
+                  class="animate-spin"
+                />
+                Loading local OpenAPI schema...
+              </div>
+            </UCard>
+          </UPageBody>
+
+          <UPageBody v-else-if="loadError">
+            <UAlert
+              title="Failed to load local schema"
+              :description="loadError.message"
+              color="error"
+              variant="soft"
+            />
+
+            <UButton
+              label="Retry"
+              class="mt-4"
+              @click="initializeSchema"
+            />
+          </UPageBody>
+
+          <UPageBody
+            v-else-if="schema && selectedItem"
+          >
             <UCard>
               <template #header>
                 <div
@@ -351,56 +238,52 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
                 />
 
                 <div class="mt-6 space-y-4">
-                  <div v-if="getSecurity(selectedItem.operationId)">
+                  <div v-if="selectedEndpointSecurityKey && selectedEndpointSecurityScheme">
                     <USeparator label="Security" />
                     <div class="space-y-1 mt-2">
-                      <div
-                        v-for="(scheme, key) in securitySchemes"
-                        :key="key"
-                        class="border border-default bg-muted/10 dark:bg-muted/20 rounded p-3"
-                      >
+                      <div class="border border-default bg-muted/10 dark:bg-muted/20 rounded p-3">
                         <div class="flex justify-between items-center">
                           <div class="text-sm font-semibold text-muted-foreground">
-                            {{ key }}
+                            {{ selectedEndpointSecurityKey }}
                           </div>
                           <UBadge
                             size="md"
                             variant="soft"
                           >
-                            {{ scheme.type }} {{ scheme.scheme ? `(${scheme.scheme})` : '' }}
+                            {{ selectedEndpointSecurityScheme.type }} {{ selectedEndpointSecurityScheme.scheme ? `(${selectedEndpointSecurityScheme.scheme})` : '' }}
                           </UBadge>
                         </div>
                         <p
-                          v-if="scheme.description"
+                          v-if="selectedEndpointSecurityScheme.description"
                           class="text-xs text-muted mt-1"
                         >
-                          {{ scheme.description }}
+                          {{ selectedEndpointSecurityScheme.description }}
                         </p>
                         <p
-                          v-if="scheme.name && scheme.in"
+                          v-if="selectedEndpointSecurityScheme.name && selectedEndpointSecurityScheme.in"
                           class="text-xs text-muted"
                         >
-                          <code class="font-mono">{{ scheme.name }}</code> in <code class="font-mono">{{ scheme.in }}</code>
+                          <code class="font-mono">{{ selectedEndpointSecurityScheme.name }}</code> in <code class="font-mono">{{ selectedEndpointSecurityScheme.in }}</code>
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div class="py-2">
-                    <RequestParametersList :parameters="getParameters(selectedItem.operationId)" />
+                    <RequestParametersList :parameters="selectedEndpointParameters" />
                   </div>
 
                   <div class="py-2">
                     <RequestBodyCard
-                      v-if="getRequestBodySchema(selectedItem.operationId)"
-                      :schema="getRequestBodySchema(selectedItem.operationId)"
+                      v-if="selectedEndpointRequestBody"
+                      :schema="selectedEndpointRequestBody"
                     />
                   </div>
 
                   <div class="py-2">
                     <ResponseExampleCard
-                      v-if="components"
-                      :method="getMethodConfig(selectedItem.operationId)"
+                      v-if="selectedEndpointMethod"
+                      :method="selectedEndpointMethod"
                       :components="components"
                     />
                   </div>
@@ -415,9 +298,20 @@ function badgeColor(method: string): 'primary' | 'secondary' | 'warning' | 'erro
               </div>
             </UCard>
           </UPageBody>
+
+          <UPageBody v-else-if="schema">
+            <UCard>
+              <p class="text-sm text-muted">
+                Select an endpoint or schema from the left navigation.
+              </p>
+            </UCard>
+          </UPageBody>
         </template>
 
-        <template #right>
+        <template
+          v-if="schema && !isLoading"
+          #right
+        >
           <UPageAside>
             <div class="max-w-6xl w-full">
               <h1

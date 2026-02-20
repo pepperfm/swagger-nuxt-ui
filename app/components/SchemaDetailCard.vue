@@ -1,50 +1,92 @@
 <script setup lang="ts">
+import type { OpenApiComponents, OpenApiSchemaObject } from '~/types/types'
 import { useCopy } from '~/composables/useCopy'
 
-defineProps<{
-  schema: any
-  components?: Record<string, any>
+const props = defineProps<{
+  schema: OpenApiSchemaObject
+  components?: OpenApiComponents
   isNested?: boolean
 }>()
 
 const { copyContent } = useCopy()
 
-function getBadgeColor(prop: any): 'error' | 'warning' | 'info' {
-  return prop.required
-    ? 'error'
-    : prop.nullable ? 'warning' : 'info'
+function resolveSchemaNode(schema: OpenApiSchemaObject, components: OpenApiComponents): OpenApiSchemaObject {
+  if (!schema.$ref) {
+    return schema
+  }
+
+  const ref = schema.$ref.replace('#/components/schemas/', '')
+  return components.schemas?.[ref] ?? {}
 }
 
-function mergeSchemas(schema: any, components: Record<string, any>): Record<string, any>[] {
-  const resolve = (s: any): any => {
-    if (s?.$ref) {
-      const ref = s.$ref.replace('#/components/schemas/', '')
-      return components.schemas?.[ref] ?? {}
-    }
-    return s
+function mergeSchemaObjects(base: OpenApiSchemaObject, next: OpenApiSchemaObject): OpenApiSchemaObject {
+  const baseRequired = Array.isArray(base.required) ? base.required : []
+  const nextRequired = Array.isArray(next.required) ? next.required : []
+
+  return {
+    ...base,
+    ...next,
+    properties: {
+      ...(base.properties ?? {}),
+      ...(next.properties ?? {}),
+    },
+    required: [...new Set([...baseRequired, ...nextRequired])],
+  }
+}
+
+function mergeSchemas(schema: OpenApiSchemaObject, components: OpenApiComponents): OpenApiSchemaObject[] {
+  const resolved = resolveSchemaNode(schema, components)
+
+  if (resolved.anyOf || resolved.oneOf) {
+    const list = resolved.anyOf ?? resolved.oneOf ?? []
+    return list.map(item => resolveSchemaNode(item, components))
   }
 
-  if (schema.anyOf || schema.oneOf) {
-    const list = schema.anyOf ?? schema.oneOf
-    return list.map(resolve)
-  }
+  if (resolved.allOf) {
+    const merged = resolved.allOf
+      .map(item => resolveSchemaNode(item, components))
+      .reduce<OpenApiSchemaObject>((acc, item) => mergeSchemaObjects(acc, item), {})
 
-  if (schema.allOf) {
-    const merged: Record<string, any> = {}
-    for (const s of schema.allOf) {
-      Object.assign(merged, resolve(s))
-    }
     return [merged]
   }
 
-  return [schema]
+  return [resolved]
+}
+
+function isPropertyRequired(schema: OpenApiSchemaObject, propertyName: string): boolean {
+  return Array.isArray(schema.required) && schema.required.includes(propertyName)
+}
+
+function getBadgeColor(isRequired: boolean, isNullable: boolean): 'error' | 'warning' | 'info' {
+  return isRequired ? 'error' : isNullable ? 'warning' : 'info'
+}
+
+function stringifyExample(example: unknown): string {
+  if (typeof example === 'string' || typeof example === 'number' || typeof example === 'boolean') {
+    return String(example)
+  }
+
+  return JSON.stringify(example, null, 2)
+}
+
+function resolveArrayItemSchema(items: OpenApiSchemaObject | undefined, components: OpenApiComponents): OpenApiSchemaObject | null {
+  if (!items) {
+    return null
+  }
+
+  if (items.$ref) {
+    const ref = items.$ref.replace('#/components/schemas/', '')
+    return components.schemas?.[ref] ?? null
+  }
+
+  return items
 }
 </script>
 
 <template>
   <div v-if="schema">
     <div
-      v-for="(variant, index) in mergeSchemas(schema, components ?? {})"
+      v-for="(variant, index) in mergeSchemas(schema, props.components ?? {})"
       :key="index"
     >
       <h3
@@ -70,7 +112,7 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
                 class="uppercase"
                 size="sm"
                 variant="soft"
-                :color="getBadgeColor(prop)"
+                :color="getBadgeColor(isPropertyRequired(variant, String(name)), Boolean(prop.nullable))"
               >
                 {{ prop.format || prop.type || 'any' }}
               </UBadge>
@@ -97,7 +139,7 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
               <span>Enum:</span>
               <UBadge
                 v-for="(val, i) in prop.enum"
-                :key="val + i"
+                :key="`${val}-${i}`"
                 color="primary"
                 variant="soft"
                 size="sm"
@@ -126,9 +168,9 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
               v-if="prop.example !== undefined && prop.example !== ''"
               class="text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono"
               title="Click to copy example"
-              @click="copyContent(typeof prop.example === 'string' || typeof prop.example === 'number' || typeof prop.example === 'boolean' ? String(prop.example) : JSON.stringify(prop.example, null, 2))"
+              @click="copyContent(stringifyExample(prop.example))"
             >
-              <pre v-if="typeof prop.example !== 'string' && typeof prop.example !== 'number' && typeof prop.example !== 'boolean'">{{ JSON.stringify(prop.example, null, 2) }}</pre>
+              <pre v-if="typeof prop.example === 'object' && prop.example !== null">{{ JSON.stringify(prop.example, null, 2) }}</pre>
               <template v-else>
                 {{ prop.example }}
               </template>
@@ -151,16 +193,16 @@ function mergeSchemas(schema: any, components: Record<string, any>): Record<stri
                 <template #content>
                   <div class="px-2 mt-2">
                     <SchemaDetailCard
-                      v-if="prop.items.$ref || prop.items.properties"
-                      :schema="prop.items.$ref ? (components?.schemas?.[prop.items.$ref.replace('#/components/schemas/', '')] ?? {}) : prop.items"
-                      :components="components"
+                      v-if="resolveArrayItemSchema(prop.items, props.components ?? {})"
+                      :schema="resolveArrayItemSchema(prop.items, props.components ?? {}) ?? {}"
+                      :components="props.components"
                       :is-nested="true"
                     />
                     <div
                       v-else
                       class="text-xs text-muted font-mono"
                     >
-                      {{ prop.items.type || 'unknown' }}
+                      unknown
                     </div>
                   </div>
                 </template>

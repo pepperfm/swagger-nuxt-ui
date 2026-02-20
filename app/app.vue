@@ -12,7 +12,7 @@ useHead({
 })
 
 const title = 'Swagger Nuxt UI'
-const description = 'Swagger documentation. Made with Nuxt UI'
+const description = 'OpenAPI documentation viewer powered by Nuxt UI and local schema files.'
 
 useSeoMeta({
   title,

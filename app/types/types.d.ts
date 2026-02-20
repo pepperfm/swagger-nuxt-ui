@@ -1,6 +1,35 @@
 export type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch'
 export type NavigationMethod = HttpMethod | ''
 
+export interface OpenApiSchemaObject {
+  type?: string
+  format?: string
+  description?: string
+  enum?: Array<string | number | boolean | null>
+  nullable?: boolean
+  required?: boolean | string[]
+  default?: unknown
+  example?: unknown
+  minLength?: number
+  maxLength?: number
+  properties?: Record<string, OpenApiSchemaObject>
+  items?: OpenApiSchemaObject
+  allOf?: OpenApiSchemaObject[]
+  oneOf?: OpenApiSchemaObject[]
+  anyOf?: OpenApiSchemaObject[]
+  $ref?: string
+  [key: string]: unknown
+}
+
+export interface OpenApiSecurityScheme {
+  type: string
+  scheme?: string
+  name?: string
+  in?: string
+  description?: string
+  bearerFormat?: string
+}
+
 export interface INavigationItem {
   _path: string
   title: string
@@ -18,22 +47,15 @@ export interface INavigationGroup {
 export interface IParameter {
   name: string
   in: string
-  type: string
+  type?: string
   description?: string
   required?: boolean
-  schema?: {
-    type: string
-    format?: string
-  }
+  schema?: OpenApiSchemaObject
 }
 
 export interface IResponseContent {
-  schema?: {
-    type?: string
-    properties?: Record<string, any>
-    example?: any
-  }
-  example?: any
+  schema?: OpenApiSchemaObject
+  example?: unknown
 }
 
 export interface IResponse {
@@ -52,15 +74,15 @@ export interface IMethod {
   requestBody?: {
     content: {
       [contentType: string]: {
-        schema?: any
-        example?: any
+        schema?: OpenApiSchemaObject
+        example?: unknown
       }
     }
   }
   responses: {
     [statusCode: string]: IResponse
   }
-  security?: Array<Record<string, unknown>>
+  security?: Array<Record<string, string[]>>
 }
 
 export interface PathsObject {
@@ -70,7 +92,34 @@ export interface PathsObject {
 export interface ResponseExample {
   status: string
   description: string
-  example: Record<string, any>
+  example: unknown
+}
+
+export interface EndpointSelection {
+  type: 'endpoint'
+  method: HttpMethod
+  url: string
+  summary?: string
+  description?: string
+  operationId: string
+}
+
+export interface SchemaSelection {
+  type: 'schema'
+  name: string
+  schema: OpenApiSchemaObject
+  operationId: string
+}
+
+export type SelectedItem = EndpointSelection | SchemaSelection
+
+export interface OpenApiComponents {
+  schemas?: Record<string, OpenApiSchemaObject>
+  responses?: Record<string, unknown>
+  parameters?: Record<string, unknown>
+  requestBodies?: Record<string, unknown>
+  securitySchemes?: Record<string, OpenApiSecurityScheme>
+  [key: string]: unknown
 }
 
 export interface IApiSpec {
@@ -94,16 +143,10 @@ export interface IApiSpec {
     description?: string
   }>
   paths: PathsObject
-  components?: {
-    schemas?: Record<string, any>
-    responses?: Record<string, any>
-    parameters?: Record<string, any>
-    requestBodies?: Record<string, any>
-    [key: string]: any
-  }
+  components?: OpenApiComponents
   tags?: Array<{
     name: string
     description?: string
   }>
-  [key: string]: any
+  [key: string]: unknown
 }

@@ -5,7 +5,7 @@
 ## Project Overview
 Nuxt 4 application for loading and browsing OpenAPI/Swagger schemas with a Nuxt UI interface.
 
-Primary behavior is in client-side Vue composables and page logic, with a small server proxy endpoint for schema retrieval.
+Primary behavior is in client-side Vue composables and page logic, with a small server endpoint that reads the local schema file from `resources/api-docs/api-docs.json`.
 
 ## Tech Stack
 - **Language:** TypeScript
@@ -21,7 +21,12 @@ app/
 ├── app.config.ts                  # Nuxt UI app-level configuration
 ├── assets/css/main.css            # Global styles
 ├── components/                    # Reusable UI elements for docs rendering
-├── composables/                   # Schema loading, copy helpers, example generation
+├── composables/
+│   ├── useOpenApiSchema.ts        # Schema loading and error state
+│   ├── useSwaggerNavigation.ts    # Endpoint/schema navigation derivation
+│   ├── useSelectedOperation.ts    # Selected item + endpoint details derivation
+│   ├── schemaExample.ts           # Example payload generation from schema
+│   └── useCopy.ts                 # Clipboard helper
 ├── pages/
 │   └── index.vue                  # Main API docs page
 └── types/
@@ -29,7 +34,11 @@ app/
 
 server/
 └── api/
-    └── swagger.ts                 # Proxy endpoint for remote Swagger JSON
+    └── swagger.ts                 # Local schema reader endpoint
+
+resources/
+└── api-docs/
+    └── api-docs.json              # Local OpenAPI schema source
 
 public/
 ├── favicon.ico
@@ -54,14 +63,16 @@ docs/                              # Project documentation pages
 | `app/app.vue` | Global UI shell and SEO meta setup |
 | `app/pages/index.vue` | Main OpenAPI viewer flow and endpoint/schema selection logic |
 | `app/composables/useOpenApiSchema.ts` | Schema fetch/state composable used by the page |
-| `server/api/swagger.ts` | Server-side URL proxy for fetching external schema JSON |
+| `app/composables/useSwaggerNavigation.ts` | Navigation derivation for endpoints and schemas |
+| `app/composables/useSelectedOperation.ts` | Selection state and derived operation metadata |
+| `server/api/swagger.ts` | Server-side local schema file reader |
 | `package.json` | Scripts and dependency manifest |
 
 ## Documentation
 | Document | Path | Description |
 |----------|------|-------------|
 | README | `README.md` | Project landing page and docs index |
-| Getting Started | `docs/getting-started.md` | Install, run, and first schema load |
+| Getting Started | `docs/getting-started.md` | Install, run, and first local schema load |
 | Architecture | `docs/architecture.md` | Layering, boundaries, and data flow |
 | API Reference | `docs/api.md` | Internal API endpoint and composables |
 | Configuration | `docs/configuration.md` | Runtime config and environment variables |

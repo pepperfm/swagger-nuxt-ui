@@ -1,102 +1,37 @@
 <script setup lang="ts">
-import type { IMethod, ResponseExample } from '~/types/types'
+import type { IMethod, OpenApiComponents, ResponseExample } from '~/types/types'
+import { generateExampleFromSchema } from '~/composables/schemaExample'
 import { useCopy } from '~/composables/useCopy'
 
 const props = defineProps<{
   method: IMethod | undefined
-  components?: Record<string, any>
+  components?: OpenApiComponents
 }>()
 
 const { copyContent } = useCopy()
-
-function generateExampleFromSchema(schema: any, components: Record<string, any> = {}): any {
-  if (!schema || typeof schema !== 'object') {
-    return null
-  }
-
-  if (schema.example !== undefined) {
-    return schema.example
-  }
-  if (schema.default !== undefined) {
-    return schema.default
-  }
-
-  if (schema.$ref) {
-    const ref = schema.$ref.replace('#/components/schemas/', '')
-    const resolved = components.schemas?.[ref]
-    if (resolved) {
-      return generateExampleFromSchema(resolved, components)
-    }
-  }
-
-  if (schema.allOf) {
-    const resolvedSchemas = schema.allOf.map((part: any) =>
-      generateExampleFromSchema(part, components),
-    )
-
-    const merged = Object.assign({}, ...resolvedSchemas)
-
-    if (typeof merged === 'object' && merged.data !== undefined) {
-      return {
-        status: 'OK',
-        message: '',
-        ...merged,
-      }
-    }
-
-    return merged
-  }
-
-  if (schema.oneOf) {
-    return generateExampleFromSchema(schema.oneOf[0], components)
-  }
-  if (schema.anyOf) {
-    return generateExampleFromSchema(schema.anyOf[0], components)
-  }
-
-  switch (schema.type) {
-    case 'object': {
-      const result: Record<string, any> = {}
-      const props = schema.properties || {}
-      for (const [key, propSchema] of Object.entries(props)) {
-        result[key] = generateExampleFromSchema(propSchema, components)
-      }
-      return result
-    }
-    case 'array':
-      return [generateExampleFromSchema(schema.items, components)]
-    case 'string':
-      return schema.format === 'date-time' ? new Date().toISOString() : 'string'
-    case 'number':
-    case 'integer':
-      return 123
-    case 'boolean':
-      return true
-    default:
-      return undefined
-  }
-}
 
 const examples = computed<ResponseExample[]>(() => {
   if (!props.method?.responses) {
     return []
   }
 
-  return Object.entries(props.method.responses).map(([status, response]) => {
-    const content = response.content?.['application/json']
-    if (!content) {
-      return null
-    }
+  return Object.entries(props.method.responses)
+    .map(([status, response]) => {
+      const content = response.content?.['application/json']
+      if (!content) {
+        return null
+      }
 
-    const schema = content.schema
-    const explicitExample = content.example || schema?.example
+      const schema = content.schema
+      const explicitExample = content.example ?? schema?.example
 
-    return {
-      status,
-      description: response.description,
-      example: explicitExample ?? generateExampleFromSchema(schema, props.components ?? {}),
-    }
-  }).filter((item): item is ResponseExample => item !== null)
+      return {
+        status,
+        description: response.description,
+        example: explicitExample ?? generateExampleFromSchema(schema, props.components ?? {}),
+      }
+    })
+    .filter((item): item is ResponseExample => item !== null)
 })
 
 function getBadgeColor(status: string): 'primary' | 'warning' | 'error' {
