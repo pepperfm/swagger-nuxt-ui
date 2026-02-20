@@ -32,11 +32,13 @@ const isJsonBody = computed(() => {
   return typeof props.contentType === 'string' && props.contentType.toLowerCase().includes('json')
 })
 
-const isFormDisabled = computed(() => !isJsonBody.value || props.formInputs.length === 0)
+const isFormDisabled = computed(() => props.formInputs.length === 0)
+
+const rawTabLabel = computed(() => (isJsonBody.value ? 'JSON' : 'Raw'))
 
 const tabItems = computed(() => [
   {
-    label: 'JSON',
+    label: rawTabLabel.value,
     value: 'json',
     slot: 'json',
   },
@@ -63,6 +65,14 @@ const modeModel = computed<RequestBodyEditorMode>({
 
     emit('update:mode', value)
   },
+})
+
+const modeSourceLabel = computed(() => {
+  if (modeModel.value === 'form') {
+    return 'FORM'
+  }
+
+  return isJsonBody.value ? 'JSON' : 'RAW'
 })
 
 const jsonValueModel = computed<string>({
@@ -96,7 +106,7 @@ const formValuesModel = computed<RequestBodyFormValueMap>({
         variant="soft"
         color="neutral"
       >
-        {{ modeModel.toUpperCase() }}
+        {{ modeSourceLabel }}
       </UBadge>
     </div>
 
@@ -119,12 +129,12 @@ const formValuesModel = computed<RequestBodyFormValueMap>({
           />
 
           <UFormField>
-            <UScrollArea class="max-h-72 w-full">
+            <UScrollArea class="max-h-[32rem] w-full">
               <UTextarea
                 v-model="jsonValueModel"
-                :rows="10"
+                :rows="14"
                 autoresize
-                :maxrows="40"
+                :maxrows="72"
                 class="font-mono text-xs w-full"
                 :disabled="disabled"
               />
@@ -148,7 +158,7 @@ const formValuesModel = computed<RequestBodyFormValueMap>({
             title="Form mode unavailable"
             color="neutral"
             variant="soft"
-            description="Body schema is not compatible with form mode for this endpoint."
+            description="Body schema has no resolvable fields for form mode."
           />
 
           <UScrollArea

@@ -28,16 +28,21 @@ function updateInputValue(path: string, value: RequestEmulatorParamValue) {
 function readInputValue(path: string): RequestEmulatorParamValue | null {
   return props.modelValue[path] ?? null
 }
+
+function isNestedPath(path: string): boolean {
+  return path.includes('.') || path.includes('[')
+}
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
     <UFormField
       v-for="input in inputs"
       :key="input.key"
       :label="input.label"
       :help="input.description || undefined"
       :required="input.required"
+      :class="isNestedPath(input.path) ? 'md:col-span-1' : 'md:col-span-2'"
     >
       <ParameterInputField
         :model-value="readInputValue(input.path)"

@@ -205,6 +205,89 @@ function isJsonContentType(contentType: string | null): boolean {
   return typeof contentType === 'string' && contentType.toLowerCase().includes('json')
 }
 
+function isMultipartContentType(contentType: string | null): boolean {
+  return typeof contentType === 'string' && contentType.toLowerCase().includes('multipart/form-data')
+}
+
+function isUrlEncodedContentType(contentType: string | null): boolean {
+  return typeof contentType === 'string' && contentType.toLowerCase().includes('application/x-www-form-urlencoded')
+}
+
+function isStructuredFormContentType(contentType: string | null): boolean {
+  return isJsonContentType(contentType) || isMultipartContentType(contentType) || isUrlEncodedContentType(contentType)
+}
+
+function appendFormDataValue(
+  target: FormData,
+  key: string,
+  value: unknown,
+): boolean {
+  if (value === null || value === undefined) {
+    return false
+  }
+
+  if (value instanceof Blob) {
+    target.append(key, value)
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    let hasAny = false
+    value.forEach((entry, index) => {
+      if (appendFormDataValue(target, `${key}[${index}]`, entry)) {
+        hasAny = true
+      }
+    })
+    return hasAny
+  }
+
+  if (typeof value === 'object') {
+    let hasAny = false
+    Object.entries(value as Record<string, unknown>).forEach(([nestedKey, nestedValue]) => {
+      if (appendFormDataValue(target, `${key}[${nestedKey}]`, nestedValue)) {
+        hasAny = true
+      }
+    })
+    return hasAny
+  }
+
+  target.append(key, String(value))
+  return true
+}
+
+function appendSearchParamValue(
+  target: URLSearchParams,
+  key: string,
+  value: unknown,
+): boolean {
+  if (value === null || value === undefined) {
+    return false
+  }
+
+  if (Array.isArray(value)) {
+    let hasAny = false
+    value.forEach((entry, index) => {
+      if (appendSearchParamValue(target, `${key}[${index}]`, entry)) {
+        hasAny = true
+      }
+    })
+    return hasAny
+  }
+
+  if (typeof value === 'object') {
+    let hasAny = false
+    Object.entries(value as Record<string, unknown>).forEach(([nestedKey, nestedValue]) => {
+      if (appendSearchParamValue(target, `${key}[${nestedKey}]`, nestedValue)) {
+        hasAny = true
+      }
+    })
+    return hasAny
+  }
+
+  target.append(key, String(value))
+  return true
+}
+
 export function useRequestEmulator(options: UseRequestEmulatorOptions) {
   const paramInputs = ref<RequestEmulatorParamInput[]>([])
   const emittedWarnings = ref<Set<string>>(new Set())
@@ -227,6 +310,9 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
   const bodyMeta = computed(() => readRequestBodyContent(options.method.value))
   const hasRequestBody = computed(() => bodyMeta.value.contentType !== null)
   const isJsonRequestBody = computed(() => isJsonContentType(bodyMeta.value.contentType))
+  const isMultipartRequestBody = computed(() => isMultipartContentType(bodyMeta.value.contentType))
+  const isUrlEncodedRequestBody = computed(() => isUrlEncodedContentType(bodyMeta.value.contentType))
+  const supportsStructuredFormBody = computed(() => isStructuredFormContentType(bodyMeta.value.contentType))
   const groupedInputs = computed(() => ({
     path: paramInputs.value.filter(input => input.in === 'path'),
     query: paramInputs.value.filter(input => input.in === 'query'),
@@ -354,26 +440,107 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
 
   const validationErrors = computed<RequestEmulatorValidationError[]>(() => [])
 
-  const transportRequestBodyText = computed<string | null>(() => {
+  const transportRequestBody = computed<BodyInit | null>(() => {
     if (!hasRequestBody.value) {
       return null
     }
 
-    if (bodyEditorMode.value === 'form' && isJsonRequestBody.value && requestBodyFormInputs.value.length > 0) {
+    if (bodyEditorMode.value === 'form' && requestBodyFormInputs.value.length > 0) {
       const payload = buildRequestBodyFromFormValues(requestBodyFormInputs.value, requestBodyFormValues.value)
       if (payload === null) {
         return null
       }
 
+      if (isMultipartRequestBody.value) {
+        const body = new FormData()
+        let hasAny = false
+
+        if (Array.isArray(payload)) {
+          payload.forEach((entry, index) => {
+            if (appendFormDataValue(body, `items[${index}]`, entry)) {
+              hasAny = true
+            }
+          })
+        } else if (typeof payload === 'object' && payload !== null) {
+          Object.entries(payload as Record<string, unknown>).forEach(([key, value]) => {
+            if (appendFormDataValue(body, key, value)) {
+              hasAny = true
+            }
+          })
+        } else if (appendFormDataValue(body, 'value', payload)) {
+          hasAny = true
+        }
+
+        return hasAny ? body : null
+      }
+
+      if (isUrlEncodedRequestBody.value) {
+        const body = new URLSearchParams()
+        let hasAny = false
+
+        if (Array.isArray(payload)) {
+          payload.forEach((entry, index) => {
+            if (appendSearchParamValue(body, `items[${index}]`, entry)) {
+              hasAny = true
+            }
+          })
+        } else if (typeof payload === 'object' && payload !== null) {
+          Object.entries(payload as Record<string, unknown>).forEach(([key, value]) => {
+            if (appendSearchParamValue(body, key, value)) {
+              hasAny = true
+            }
+          })
+        } else if (appendSearchParamValue(body, 'value', payload)) {
+          hasAny = true
+        }
+
+        return hasAny ? body : null
+      }
+
+      if (typeof payload === 'string') {
+        return payload
+      }
+
       try {
         return JSON.stringify(payload)
       } catch (error) {
-        emitWarningOnce('[useRequestEmulator] Failed to serialize form payload to JSON; falling back to raw body text', { error })
+        emitWarningOnce('[useRequestEmulator] Failed to serialize form payload; falling back to raw body text', { error })
       }
     }
 
     const raw = requestBodyText.value.trim()
     return raw === '' ? null : raw
+  })
+
+  const transportRequestBodyText = computed<string | null>(() => {
+    const body = transportRequestBody.value
+    if (body === null) {
+      return null
+    }
+
+    if (typeof body === 'string') {
+      return body
+    }
+
+    if (body instanceof URLSearchParams) {
+      return body.toString()
+    }
+
+    if (body instanceof FormData) {
+      const entries: Record<string, string[]> = {}
+      body.forEach((value, key) => {
+        const normalized = typeof value === 'string' ? value : '[blob]'
+        if (!entries[key]) {
+          entries[key] = []
+        }
+
+        entries[key].push(normalized)
+      })
+
+      return JSON.stringify(entries, null, 2)
+    }
+
+    return null
   })
 
   const preparedRequest = computed<RequestEmulatorPreparedRequest | null>(() => {
@@ -390,7 +557,9 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       headers.Cookie = cookieHeader
     }
 
-    if (bodyMeta.value.contentType && transportRequestBodyText.value !== null) {
+    const hasTransportBody = transportRequestBody.value !== null
+    const skipExplicitMultipartHeader = bodyEditorMode.value === 'form' && isMultipartRequestBody.value
+    if (bodyMeta.value.contentType && hasTransportBody && !skipExplicitMultipartHeader) {
       headers['Content-Type'] = bodyMeta.value.contentType
     }
 
@@ -405,12 +574,14 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       emitWarningOnce(`[useRequestEmulator] Security configuration warning: ${message}`)
     })
     const bodyText = transportRequestBodyText.value
+    const body = transportRequestBody.value
 
     const prepared: RequestEmulatorPreparedRequest = {
       url,
       method: endpoint.method,
       headers: securityResult.headers,
       bodyText,
+      body,
       curl: '',
     }
 
@@ -432,13 +603,12 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       token: '',
     }
     emittedWarnings.value = new Set()
-    bodyEditorMode.value = 'json'
     requestBodyJsonWarning.value = null
 
     const meta = bodyMeta.value
     const baseExample = meta.example ?? generateExampleFromSchema(meta.schema, options.components.value)
     requestBodyText.value = stringifyUnknown(baseExample)
-    if (isJsonRequestBody.value) {
+    if (supportsStructuredFormBody.value) {
       const bodyFormResolution = resolveRequestBodyFormInputs(meta.schema, options.components.value)
       requestBodyFormInputs.value = bodyFormResolution.inputs
       requestBodyFormValues.value = createInitialRequestBodyFormValues(bodyFormResolution.inputs)
@@ -448,8 +618,15 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
         emitWarningOnce(warning)
       })
 
-      syncFormFromJsonText('init')
+      bodyEditorMode.value = !isJsonRequestBody.value && bodyFormResolution.inputs.length > 0
+        ? 'form'
+        : 'json'
+
+      if (isJsonRequestBody.value) {
+        syncFormFromJsonText('init')
+      }
     } else {
+      bodyEditorMode.value = 'json'
       requestBodyFormInputs.value = []
       requestBodyFormValues.value = {}
       replaceFormWarnings([])
@@ -499,7 +676,7 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       const response = await fetch(prepared.url, {
         method: prepared.method.toUpperCase() as Uppercase<HttpMethod>,
         headers: prepared.headers,
-        body: prepared.bodyText,
+        body: prepared.body,
         signal: controller.signal,
       })
       const elapsedMs = Math.round(performance.now() - startAt)

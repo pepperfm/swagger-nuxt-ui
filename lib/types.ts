@@ -121,6 +121,7 @@ export interface RequestEmulatorPreparedRequest {
   method: HttpMethod
   headers: Record<string, string>
   bodyText: string | null
+  body: BodyInit | null
   curl: string
 }
 

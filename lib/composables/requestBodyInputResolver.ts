@@ -125,11 +125,22 @@ function normalizeLabel(path: string): string {
   }
 
   const segment = path.split('.').at(-1) ?? path
-  return segment
+  const normalized = segment
+    .replace(/\[\d+\]/g, '')
     .replace(/\[\]$/g, '')
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+
+  return normalized || 'Item'
+}
+
+function appendArrayIndex(path: string, index: number): string {
+  if (!path) {
+    return `[${index}]`
+  }
+
+  return `${path}[${index}]`
 }
 
 function toBodyInput(path: string, schema: OpenApiSchemaObject, required: boolean): RequestBodyFormInput {
@@ -199,7 +210,15 @@ function walkSchema(options: {
     const itemNode = resolveSchemaNode(resolved.items, components, state)
     const itemType = normalizeSchemaType(itemNode)
     if (itemType === 'object') {
-      warnOnce(state, `[requestBodyInputResolver] Array of objects at "${path || ROOT_PATH}" is not supported in form mode`)
+      const nestedPath = appendArrayIndex(path, 0)
+      walkSchema({
+        schema: itemNode,
+        path: nestedPath,
+        required,
+        components,
+        state,
+        collector,
+      })
       return
     }
   }

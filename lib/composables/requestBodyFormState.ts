@@ -9,6 +9,7 @@ import {
 } from './requestParameterInputResolver'
 
 const ROOT_PATH = '$'
+const PATH_TOKEN_REGEXP = /([^[.\]]+)|\[(\d+)\]/g
 
 interface BodyHydrationResult {
   values: RequestBodyFormValueMap
@@ -23,41 +24,122 @@ function toSerializableValue(value: RequestEmulatorParamValue): unknown {
   return value
 }
 
-function setNestedValue(target: Record<string, unknown>, path: string, value: unknown) {
-  const segments = path.split('.').filter(Boolean)
-  if (!segments.length) {
-    return
+type PathToken = string | number
+
+function parsePathTokens(path: string): PathToken[] {
+  const tokens: PathToken[] = []
+  const normalizedPath = path.trim()
+  if (!normalizedPath) {
+    return tokens
   }
 
-  let cursor: Record<string, unknown> = target
-  segments.forEach((segment, index) => {
-    const isLast = index === segments.length - 1
+  for (const match of normalizedPath.matchAll(PATH_TOKEN_REGEXP)) {
+    if (match[1]) {
+      tokens.push(match[1])
+      continue
+    }
+
+    if (match[2]) {
+      tokens.push(Number(match[2]))
+    }
+  }
+
+  return tokens
+}
+
+function createContainer(nextToken: PathToken | undefined): Record<string, unknown> | unknown[] {
+  return typeof nextToken === 'number' ? [] : {}
+}
+
+function setNestedValue(target: unknown, path: string, value: unknown): unknown {
+  const tokens = parsePathTokens(path)
+  if (!tokens.length) {
+    return target
+  }
+
+  let root: unknown = target
+  if (typeof root !== 'object' || root === null) {
+    root = createContainer(tokens[0])
+  }
+
+  if (typeof tokens[0] === 'number' && !Array.isArray(root)) {
+    root = []
+  }
+
+  let cursor: unknown = root
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]
+    if (token === undefined) {
+      continue
+    }
+
+    const isLast = index === tokens.length - 1
+    const nextToken = tokens[index + 1]
+
+    if (typeof token === 'number') {
+      if (!Array.isArray(cursor)) {
+        break
+      }
+
+      if (isLast) {
+        cursor[token] = value
+        break
+      }
+
+      const existing = cursor[token]
+      if (typeof existing !== 'object' || existing === null) {
+        cursor[token] = createContainer(nextToken)
+      }
+
+      cursor = cursor[token]
+      continue
+    }
+
+    if (typeof cursor !== 'object' || cursor === null || Array.isArray(cursor)) {
+      break
+    }
+
+    const objectCursor = cursor as Record<string, unknown>
+
     if (isLast) {
-      cursor[segment] = value
-      return
+      objectCursor[token] = value
+      break
     }
 
-    if (typeof cursor[segment] !== 'object' || cursor[segment] === null || Array.isArray(cursor[segment])) {
-      cursor[segment] = {}
+    const existing = objectCursor[token]
+    if (typeof existing !== 'object' || existing === null) {
+      objectCursor[token] = createContainer(nextToken)
     }
 
-    cursor = cursor[segment] as Record<string, unknown>
-  })
+    cursor = objectCursor[token]
+  }
+
+  return root
 }
 
 function getNestedValue(source: unknown, path: string): unknown {
-  const segments = path.split('.').filter(Boolean)
-  if (!segments.length || typeof source !== 'object' || source === null) {
+  const tokens = parsePathTokens(path)
+  if (!tokens.length) {
     return undefined
   }
 
   let cursor: unknown = source
-  for (const segment of segments) {
-    if (typeof cursor !== 'object' || cursor === null || !(segment in cursor)) {
+  for (const token of tokens) {
+    if (typeof token === 'number') {
+      if (!Array.isArray(cursor) || token < 0 || token >= cursor.length) {
+        return undefined
+      }
+
+      cursor = cursor[token]
+      continue
+    }
+
+    if (typeof cursor !== 'object' || cursor === null || !(token in cursor)) {
       return undefined
     }
 
-    cursor = (cursor as Record<string, unknown>)[segment]
+    cursor = (cursor as Record<string, unknown>)[token]
   }
 
   return cursor
@@ -82,7 +164,7 @@ export function buildRequestBodyFromFormValues(
       : toSerializableValue(value)
   }
 
-  const payload: Record<string, unknown> = {}
+  let payload: unknown = {}
   let hasAtLeastOneField = false
 
   inputs.forEach((input) => {
@@ -95,7 +177,7 @@ export function buildRequestBodyFromFormValues(
       return
     }
 
-    setNestedValue(payload, input.path, toSerializableValue(value))
+    payload = setNestedValue(payload, input.path, toSerializableValue(value))
     hasAtLeastOneField = true
   })
 
