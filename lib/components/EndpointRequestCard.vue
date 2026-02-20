@@ -180,7 +180,13 @@ async function onSendClick() {
               <UInput
                 v-model="auth.token"
                 type="password"
-                autocomplete="off"
+                autocomplete="new-password"
+                name="swagger-auth-token"
+                autocapitalize="off"
+                autocorrect="off"
+                :spellcheck="false"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 placeholder="Paste access token"
                 icon="i-lucide-key-round"
               />

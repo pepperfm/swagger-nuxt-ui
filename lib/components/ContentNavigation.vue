@@ -97,6 +97,12 @@ const filteredSchemaItems = computed(() => {
         size="sm"
         placeholder="Filter schemas..."
         autocomplete="off"
+        name="swagger-schema-filter"
+        autocapitalize="off"
+        autocorrect="off"
+        :spellcheck="false"
+        data-lpignore="true"
+        data-1p-ignore="true"
         class="mt-2"
       />
       <ul class="pl-4 space-y-3 mt-2">
