@@ -10,10 +10,10 @@ Nuxt 4 + Nuxt UI 4 repository with dual purpose:
 - Laravel bridge Composer package (`pepperfm/swagger-ui-laravel-bridge`) sourced from `packages/laravel-bridge`.
 
 ## Tech Stack
-- **Language:** TypeScript
-- **Framework:** Nuxt 4 (Vue 3)
+- **Language:** TypeScript, PHP
+- **Framework:** Nuxt 4 (Vue 3), Laravel bridge package
 - **UI:** Nuxt UI 4
-- **Packaging:** Vite library mode + `vue-tsc`
+- **Packaging:** Vite library mode + standalone Vite viewer build
 - **Database:** None
 - **ORM:** None
 
@@ -35,6 +35,11 @@ lib/
 ├── composables/                   # Library-owned composables
 └── styles/swagger-ui.css          # Library stylesheet
 
+bridge-viewer/
+├── main.ts                        # Standalone browser entrypoint for Laravel page
+├── App.vue                        # Viewer shell wrapping SwaggerViewer
+└── styles.css                     # Tailwind + Nuxt UI + viewer styles
+
 server/
 └── api/
     ├── swagger.ts                 # Local schema reader endpoint
@@ -44,14 +49,24 @@ resources/
 └── api-docs/api-docs.json         # Local OpenAPI source
 
 packages/laravel-bridge/
-├── composer.json                  # Bridge package manifest (auto-discovery)
-├── config/swagger-ui-bridge.php   # Bridge route/schema config
-├── routes/swagger-ui.php          # GET /api/swagger-ui route registration
-└── src/                           # Service provider, resolver, controller
+├── composer.json
+├── config/swagger-ui-bridge.php
+├── resources/
+│   ├── assets/                    # viewer.js/viewer.css distributed with bridge package
+│   └── views/viewer.blade.php     # Zero-config HTML page shell
+├── routes/swagger-ui.php          # GET /api/swagger-ui and GET /swagger-ui routes
+└── src/
+    ├── SwaggerUiBridgeServiceProvider.php
+    ├── SchemaPathResolver.php
+    └── Http/Controllers/
+        ├── SwaggerSchemaController.php
+        ├── SwaggerViewerPageController.php
+        └── BridgeAssetController.php
 
 scripts/
-├── postinstall.mjs                # npm lifecycle orchestration
-├── install-laravel-bridge.mjs     # Best-effort composer bridge installer
+├── cli/install-bridge.mjs         # Public CLI command (bin) for bridge bootstrap
+├── install-laravel-bridge.mjs     # Composer bridge installer with path mode
+├── sync-bridge-viewer-assets.mjs  # Copies dist/viewer assets into bridge package
 └── lib/                           # Script helpers
 
 docs/
@@ -66,26 +81,25 @@ docs/
 ## Key Entry Points
 | File | Purpose |
 |------|---------|
-| `package.json` | Scripts and package metadata for app + library builds |
+| `package.json` | Scripts and package metadata for app + library + viewer asset builds |
 | `vite.lib.config.ts` | Library bundle configuration |
-| `tsconfig.lib.json` | Library declaration build configuration |
+| `vite.viewer.config.ts` | Standalone viewer bundle configuration |
 | `lib/index.ts` | Library public API exports |
-| `lib/components/SwaggerViewer.vue` | Main reusable viewer component |
-| `app/pages/index.vue` | Demo host integration of library |
-| `server/api/swagger.ts` | Local schema endpoint implementation |
-| `server/api/swagger-ui.ts` | Demo alias route (`/api/swagger-ui`) |
-| `packages/laravel-bridge/src/SwaggerUiBridgeServiceProvider.php` | Laravel bridge service provider |
-| `scripts/postinstall.mjs` | npm postinstall orchestration for bridge bootstrap |
+| `bridge-viewer/main.ts` | Browser entry used by Laravel bridge page |
+| `packages/laravel-bridge/routes/swagger-ui.php` | Bridge route registration for JSON + page + assets |
+| `packages/laravel-bridge/src/Http/Controllers/SwaggerViewerPageController.php` | Renders `/swagger-ui` page |
+| `packages/laravel-bridge/src/Http/Controllers/BridgeAssetController.php` | Serves offline viewer assets |
+| `scripts/cli/install-bridge.mjs` | CLI entrypoint for Laravel bridge bootstrap |
 
 ## Documentation
 | Document | Path | Description |
 |----------|------|-------------|
-| README | `README.md` | Overview of demo and library usage |
+| README | `README.md` | Overview and zero-config Laravel flow |
 | Getting Started | `docs/getting-started.md` | Local run and consumer setup |
 | Architecture | `docs/architecture.md` | Layering and dependency boundaries |
-| API Reference | `docs/api.md` | Server endpoint and library API |
-| Configuration | `docs/configuration.md` | Runtime/build configuration |
-| Deployment | `docs/deployment.md` | Demo deploy and release workflow |
+| API Reference | `docs/api.md` | Endpoint and library contracts |
+| Configuration | `docs/configuration.md` | Runtime/build/bridge config |
+| Deployment | `docs/deployment.md` | Release workflow and smoke checks |
 | Contributing | `docs/contributing.md` | Validation checklist |
 
 ## AI Context Files

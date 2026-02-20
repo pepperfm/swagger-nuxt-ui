@@ -4,8 +4,9 @@
 
 Repository roles:
 
-- **Demo app**: loads local schema from `resources/api-docs/api-docs.json` through `GET /api/swagger-ui` (alias `GET /api/swagger`).
-- **Library package**: exports `SwaggerViewer`, reusable cards/navigation components, and typed composables.
+- Demo app: loads local schema from `resources/api-docs/api-docs.json` through `GET /api/swagger-ui` (alias `GET /api/swagger`).
+- Library package: exports `SwaggerViewer`, reusable cards/navigation components, and typed composables.
+- Laravel bridge package: serves zero-config viewer page at `GET /swagger-ui` and JSON at `GET /api/swagger-ui`.
 
 ## Quick Start (Demo App)
 
@@ -16,47 +17,57 @@ bun run dev:app
 
 Open `http://localhost:3000`.
 
-## Build Library Artifacts
+## Laravel Zero-Config Flow
+
+After installing the npm package in a Laravel host project:
+
+```bash
+bunx swagger-ui-bridge-install
+```
+
+Then open:
+
+- `GET /swagger-ui` -> viewer UI
+- `GET /api/swagger-ui` -> raw OpenAPI JSON
+
+No host-side Vue/Inertia code is required.
+
+### Local Bridge Development (`--path`)
+
+Use path-repo mode to install bridge from local filesystem:
+
+```bash
+bunx swagger-ui-bridge-install --path /absolute/path/to/packages/laravel-bridge --constraint @dev
+```
+
+Optional flags:
+
+- `--project-root /path/to/laravel`
+- `--package pepperfm/swagger-ui-laravel-bridge`
+- `--strict`
+
+Env equivalents:
+
+- `SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1`
+- `SWAGGER_UI_BRIDGE_STRICT=1`
+- `SWAGGER_UI_BRIDGE_PACKAGE=vendor/package`
+- `SWAGGER_UI_BRIDGE_PATH=/abs/path/to/bridge`
+- `SWAGGER_UI_BRIDGE_CONSTRAINT=@dev`
+
+## Build Artifacts
 
 ```bash
 bun run build:lib
+bun run build:bridge-assets
 ```
 
-Artifacts are generated in `dist/lib`:
+Generated outputs:
 
-- `index.mjs`
-- `index.cjs`
-- `types.d.ts`
-- `index.css`
+- `dist/lib/*` -> npm library bundle
+- `dist/viewer/viewer.js` + `dist/viewer/viewer.css` -> standalone viewer build
+- `packages/laravel-bridge/resources/assets/*` -> bridge-distributed viewer assets
 
-## Package API
-
-- Entry: `@pepperfm/swagger-nuxt-ui`
-- Styles: `@pepperfm/swagger-nuxt-ui/styles.css`
-
-## Nuxt Consumer Example
-
-```vue
-<script setup lang="ts">
-import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
-</script>
-
-<template>
-  <SwaggerViewer
-    schema-source="/api/swagger-ui"
-    base-api-url="https://api.example.com"
-    schema-headline="./resources/api-docs/api-docs.json"
-  />
-</template>
-```
-
-In global CSS:
-
-```css
-@import "@pepperfm/swagger-nuxt-ui/styles.css";
-```
-
-## Laravel + Inertia/Vite Consumer Example
+## Nuxt/Vue Consumer Example
 
 ```vue
 <script setup lang="ts">
@@ -65,31 +76,9 @@ import '@pepperfm/swagger-nuxt-ui/styles.css'
 </script>
 
 <template>
-  <SwaggerViewer
-    schema-source="/api/swagger-ui"
-    base-api-url="/api"
-    schema-headline="Local OpenAPI schema"
-  />
+  <SwaggerViewer schema-source="/api/swagger-ui" base-api-url="/api" />
 </template>
 ```
-
-## Laravel Bridge Auto-Install
-
-On package install, the postinstall script tries to bootstrap a Laravel bridge package in Laravel hosts:
-
-- Composer package: `pepperfm/swagger-ui-laravel-bridge`
-- Default bridge route: `/api/swagger-ui`
-
-Optional env flags:
-
-- `SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1` -> skip composer bridge install.
-- `SWAGGER_UI_BRIDGE_STRICT=1` -> fail install when bridge bootstrap fails.
-- `SWAGGER_UI_BRIDGE_PACKAGE=vendor/package` -> override composer package name.
-
-## Minimal Logging Model
-
-- `WARN`: unsupported schema shape, missing schema source, missing referenced schema nodes.
-- `ERROR`: schema load failure and malformed local schema parsing.
 
 ---
 
@@ -97,11 +86,11 @@ Optional env flags:
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs/getting-started.md) | Demo setup and consumer setup |
+| [Getting Started](docs/getting-started.md) | Demo setup and zero-config Laravel flow |
 | [Architecture](docs/architecture.md) | Layered structure and dependency rules |
 | [API Reference](docs/api.md) | Endpoint behavior and library API |
-| [Configuration](docs/configuration.md) | Runtime and library build configuration |
-| [Deployment](docs/deployment.md) | Demo deploy and library release flow |
+| [Configuration](docs/configuration.md) | Runtime and bridge/library configuration |
+| [Deployment](docs/deployment.md) | Release flow and smoke checklist |
 | [Contributing](docs/contributing.md) | Quality checks and contribution process |
 
 ## AI Context

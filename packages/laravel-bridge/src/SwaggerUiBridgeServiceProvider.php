@@ -16,10 +16,16 @@ class SwaggerUiBridgeServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'swagger-ui-bridge');
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__ . '/../config/swagger-ui-bridge.php' => config_path('swagger-ui-bridge.php'),
             ], 'swagger-ui-bridge-config');
+
+            $this->publishes([
+                __DIR__ . '/../resources/views' => resource_path('views/vendor/swagger-ui-bridge'),
+            ], 'swagger-ui-bridge-views');
         }
 
         if (!(bool) config('swagger-ui-bridge.enabled', true)) {

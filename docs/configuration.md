@@ -15,39 +15,73 @@
 
 - `vite.lib.config.ts`: library bundle config (ESM + CJS)
 - `tsconfig.lib.json`: declaration generation for public API
-- Entry point: `lib/index.ts`
-- CSS output: `dist/lib/index.css`
+- `vite.viewer.config.ts`: standalone viewer bundle config
+- `tsconfig.viewer.json`: viewer entrypoint typing
 
 ## Scripts
 
 - `dev:app`: run Nuxt demo app
 - `build:app`: build Nuxt demo app
 - `build:lib`: build distributable library bundle and declarations
-
-## Schema Source Strategy
-
-`useSwaggerSchema` supports:
-
-- default local source (`/api/swagger-ui`)
-- explicit override source via `loadSchema(source)`
-- custom `fetcher` injection
+- `build:viewer`: build standalone viewer assets (`dist/viewer`)
+- `build:bridge-assets`: copy `viewer.js/css` into bridge package
+- `bridge:install`: run Laravel bridge bootstrap locally
 
 ## Laravel Bridge Config
 
 Bridge package config key: `swagger-ui-bridge`.
 
-Defaults:
+### JSON Route
 
 - `enabled: true`
 - `route.path: /api/swagger-ui`
 - `route.name: swagger-ui.bridge.schema`
 - `route.middleware: ['web']`
-- `schema_path: null` (auto resolve through `l5-swagger` then fallback to `storage/api-docs/api-docs.json`)
+- `schema_path: null`
+
+Schema resolution order:
+
+1. `schema_path`
+2. `l5-swagger` docs path
+3. `storage/api-docs/api-docs.json`
+
+### Viewer Route
+
+- `viewer.enabled: true`
+- `viewer.title: API Documentation`
+- `viewer.route.path: /swagger-ui`
+- `viewer.route.name: swagger-ui.bridge.viewer`
+- `viewer.route.middleware: ['web']`
+
+Viewer assets are served from bridge package route:
+
+- `GET <viewer.route.path>/assets/viewer.css`
+- `GET <viewer.route.path>/assets/viewer.js`
+
+## Installer Configuration
+
+CLI: `swagger-ui-bridge-install`
+
+Options:
+
+- `--project-root`
+- `--package`
+- `--path`
+- `--constraint`
+- `--strict`
+
+Environment variables:
+
+- `SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1`
+- `SWAGGER_UI_BRIDGE_STRICT=1`
+- `SWAGGER_UI_BRIDGE_PACKAGE=vendor/package`
+- `SWAGGER_UI_BRIDGE_PATH=/abs/path/to/packages/laravel-bridge`
+- `SWAGGER_UI_BRIDGE_CONSTRAINT=@dev`
 
 ## Logging Policy
 
-- `WARN`: invalid schema shape, unsupported method records, missing refs/sources
-- `ERROR`: schema fetch failures and unrecoverable parse failures
+- `WARN`: route conflicts, viewer-disabled config, recoverable schema issues
+- `ERROR`: schema parse/read failures, missing critical viewer asset files
 
 ## See Also
 

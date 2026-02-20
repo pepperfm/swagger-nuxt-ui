@@ -1,6 +1,6 @@
 {
   "name": "pepperfm/swagger-ui-laravel-bridge",
-  "description": "Laravel bridge route for @pepperfm/swagger-nuxt-ui",
+  "description": "Laravel bridge routes and standalone viewer page for @pepperfm/swagger-nuxt-ui",
   "type": "library",
   "license": "MIT",
   "require": {

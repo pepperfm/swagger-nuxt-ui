@@ -51,6 +51,27 @@ Error body contract:
 }
 ```
 
+### `GET /swagger-ui` (Laravel bridge viewer page contract)
+
+Returns standalone HTML page with embedded Swagger viewer UI.
+
+Runtime behavior:
+
+- Viewer frontend bootstraps from local bridge assets (no CDN).
+- Default schema source is `GET /api/swagger-ui`.
+- Viewer keeps working offline when assets are published in the bridge package.
+
+Responses:
+
+- `200`: HTML viewer page rendered.
+- `404`: route is not registered (disabled or conflicting route already exists in host app).
+- `500`: bridge viewer asset is missing/unreadable (critical render failure).
+
+Logs:
+
+- `WARN`: viewer route disabled or skipped due to route name/path conflict.
+- `ERROR`: critical render failure (for example missing asset file).
+
 ## Library Exports
 
 Entry: `@pepperfm/swagger-nuxt-ui`

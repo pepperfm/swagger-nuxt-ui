@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "../lib/styles/swagger-ui.css";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+#swagger-ui-bridge-viewer {
+  min-height: 100vh;
+}

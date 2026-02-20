@@ -5,8 +5,8 @@
 ## Prerequisites
 
 - Node.js 20+
-- `bun` or `pnpm`
-- Vue 3 host app (Nuxt or Laravel + Inertia/Vite)
+- `bun` (or `npm`)
+- Laravel host only if bridge flow is needed
 
 ## Demo App Setup
 
@@ -30,16 +30,8 @@ Failure behavior:
 
 ## Library Consumer Setup
 
-Install package and peer requirements:
-
 ```bash
-pnpm add @pepperfm/swagger-nuxt-ui @nuxt/ui @vueuse/core
-```
-
-Import styles:
-
-```css
-@import "@pepperfm/swagger-nuxt-ui/styles.css";
+bun add @pepperfm/swagger-nuxt-ui
 ```
 
 Use component:
@@ -47,6 +39,7 @@ Use component:
 ```vue
 <script setup lang="ts">
 import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
+import '@pepperfm/swagger-nuxt-ui/styles.css'
 </script>
 
 <template>
@@ -54,13 +47,30 @@ import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
 </template>
 ```
 
-For Laravel hosts, package postinstall attempts to install the bridge package automatically and expose `/api/swagger-ui`.
+## Laravel Zero-Config Bridge Setup
 
-Opt-out:
+Run installer in Laravel host project:
 
 ```bash
-SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1 bun add @pepperfm/swagger-nuxt-ui
+bunx swagger-ui-bridge-install
 ```
+
+Expected result:
+
+- `GET /swagger-ui` -> viewer page
+- `GET /api/swagger-ui` -> OpenAPI JSON
+
+### Local Bridge Development Mode
+
+```bash
+bunx swagger-ui-bridge-install --path /absolute/path/to/packages/laravel-bridge --constraint @dev
+```
+
+Useful options:
+
+- `--project-root /path/to/laravel`
+- `--package pepperfm/swagger-ui-laravel-bridge`
+- `--strict`
 
 ## Build Commands
 
@@ -69,6 +79,7 @@ bun run lint
 bun run typecheck
 bun run build:app
 bun run build:lib
+bun run build:bridge-assets
 ```
 
 ## See Also

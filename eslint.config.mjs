@@ -3,6 +3,8 @@ import antfu from '@antfu/eslint-config'
 export default antfu({
   ignores: [
     'example.json',
+    'dist/**',
+    'packages/laravel-bridge/resources/assets/**',
   ],
   vue: true,
   rules: {

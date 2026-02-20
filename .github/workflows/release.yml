@@ -42,6 +42,9 @@ jobs:
       - name: Build library
         run: pnpm run build:lib
 
+      - name: Build bridge viewer assets
+        run: pnpm run build:bridge-assets
+
       - name: Verify library artifacts
         shell: bash
         run: |
@@ -50,12 +53,23 @@ jobs:
           test -f dist/lib/index.cjs || (echo "ERROR: dist/lib/index.cjs missing" && exit 1)
           test -f dist/lib/types.d.ts || (echo "ERROR: dist/lib/types.d.ts missing" && exit 1)
           test -f dist/lib/index.css || (echo "ERROR: dist/lib/index.css missing" && exit 1)
+          test -f dist/viewer/viewer.js || (echo "ERROR: dist/viewer/viewer.js missing" && exit 1)
+          test -f dist/viewer/viewer.css || (echo "ERROR: dist/viewer/viewer.css missing" && exit 1)
+          test -f packages/laravel-bridge/resources/assets/viewer.js || (echo "ERROR: bridge viewer.js missing" && exit 1)
+          test -f packages/laravel-bridge/resources/assets/viewer.css || (echo "ERROR: bridge viewer.css missing" && exit 1)
 
       - name: Upload library artifact
         uses: actions/upload-artifact@v4
         with:
           name: swagger-ui-library-dist
           path: dist/lib
+          if-no-files-found: error
+
+      - name: Upload bridge viewer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: swagger-ui-bridge-viewer-assets
+          path: packages/laravel-bridge/resources/assets
           if-no-files-found: error
 
   publish-npm:
@@ -85,6 +99,9 @@ jobs:
 
       - name: Build library
         run: pnpm run build:lib
+
+      - name: Build bridge viewer assets
+        run: pnpm run build:bridge-assets
 
       - name: Publish package
         env:
