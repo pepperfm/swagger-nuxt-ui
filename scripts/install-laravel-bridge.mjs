@@ -234,7 +234,10 @@ export async function installLaravelBridge(options = {}) {
   const localPathArgument = options.localPath ?? process.env.SWAGGER_UI_BRIDGE_PATH ?? ''
   const localPath = localPathArgument ? resolvePathArgument(projectRoot, localPathArgument) : null
   const embeddedBridgePath = existsSync(join(EMBEDDED_BRIDGE_PATH, 'composer.json')) ? EMBEDDED_BRIDGE_PATH : null
+  const preferredPath = localPath ?? embeddedBridgePath
+  const usesEmbeddedPath = !localPath && Boolean(preferredPath)
   const forceFailureOnError = strictMode || Boolean(localPath)
+  const requestedConstraint = options.versionConstraint ?? process.env.SWAGGER_UI_BRIDGE_CONSTRAINT ?? ''
 
   if (isSkippedByEnv()) {
     console.warn('[swagger-ui] WARN Laravel bridge install skipped by SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1')
@@ -249,25 +252,38 @@ export async function installLaravelBridge(options = {}) {
 
   const installedInComposer = hasBridgeInComposer(projectRoot, packageName)
   const hasPathRepositoryConfigured = hasPathRepositoryForPackage(projectRoot, packageName)
+  let pathRepositoryReady = hasPathRepositoryConfigured
 
-  if (localPath) {
-    const validation = validateBridgePackagePath(localPath, packageName)
+  if (preferredPath) {
+    const validation = validateBridgePackagePath(preferredPath, packageName)
     if (!validation.ok) {
-      console.error(`[swagger-ui] ERROR Invalid local bridge path (${validation.reason})`)
+      const sourceLabel = localPath ? 'local bridge path' : 'embedded bridge path'
+      console.error(`[swagger-ui] ERROR Invalid ${sourceLabel} (${validation.reason})`)
       if (validation.reason === 'bridge_package_name_mismatch') {
         console.error(`[swagger-ui] ERROR Expected package ${packageName}, got ${validation.bridgeName}`)
       }
 
-      return { ok: !forceFailureOnError, skipped: true, reason: validation.reason }
+      if (localPath) {
+        return { ok: !forceFailureOnError, skipped: true, reason: validation.reason }
+      }
     }
 
-    const repositorySetup = setComposerPathRepository(projectRoot, packageName, localPath)
-    if (!repositorySetup.ok) {
-      console.error('[swagger-ui] ERROR Failed to configure composer path repository for local bridge')
-      return { ok: !forceFailureOnError, skipped: true, reason: repositorySetup.reason }
+    if (validation.ok) {
+      const repositorySetup = setComposerPathRepository(projectRoot, packageName, preferredPath)
+      if (!repositorySetup.ok) {
+        console.error('[swagger-ui] ERROR Failed to configure composer path repository for local bridge')
+        if (localPath) {
+          return { ok: !forceFailureOnError, skipped: true, reason: repositorySetup.reason }
+        }
+      } else {
+        pathRepositoryReady = true
+        if (usesEmbeddedPath) {
+          console.info('[swagger-ui] Embedded composer path repository configured for Laravel bridge')
+        } else {
+          console.info('[swagger-ui] Local composer path repository configured for Laravel bridge')
+        }
+      }
     }
-
-    console.info('[swagger-ui] Local composer path repository configured for Laravel bridge')
   }
 
   const composerCommand = resolveComposerCommand()
@@ -277,8 +293,8 @@ export async function installLaravelBridge(options = {}) {
     return { ok: !forceFailureOnError, skipped: true, reason: 'composer_unavailable' }
   }
 
-  if (installedInComposer && !localPath) {
-    if (!hasPathRepositoryConfigured) {
+  if (installedInComposer) {
+    if (!pathRepositoryReady) {
       return { ok: true, skipped: true }
     }
 
@@ -300,15 +316,36 @@ export async function installLaravelBridge(options = {}) {
     return { ok: true, installed: true, refreshed: true }
   }
 
-  const versionConstraint = options.versionConstraint
-    ?? process.env.SWAGGER_UI_BRIDGE_CONSTRAINT
-    ?? (localPath ? '@dev' : '')
+  const versionConstraint = requestedConstraint || (pathRepositoryReady ? '@dev' : '')
 
   const packageSpec = versionConstraint ? `${packageName}:${versionConstraint}` : packageName
   const requireResult = await runComposerRequire(composerCommand, projectRoot, packageSpec)
 
   if (!requireResult.ok) {
-    const canUseEmbeddedFallback = !localPath && Boolean(embeddedBridgePath)
+    if (usesEmbeddedPath && pathRepositoryReady) {
+      const registrySpec = requestedConstraint ? `${packageName}:${requestedConstraint}` : packageName
+      console.warn('[swagger-ui] WARN Embedded path install failed, trying registry package')
+      const registryResult = await runComposerRequire(composerCommand, projectRoot, registrySpec)
+      if (registryResult.ok) {
+        console.warn('[swagger-ui] WARN Bridge installed from registry after embedded-path attempt')
+        return { ok: true, installed: true, fallback: 'registry' }
+      }
+
+      console.error('[swagger-ui] ERROR Failed to install Laravel bridge package (embedded path + registry)')
+      printComposerDiagnostics(requireResult.stderr, {
+        packageName,
+        localPath: preferredPath ?? undefined,
+        constraint: versionConstraint || undefined,
+      })
+      printComposerDiagnostics(registryResult.stderr, {
+        packageName,
+        constraint: requestedConstraint || undefined,
+      })
+
+      return { ok: !forceFailureOnError, skipped: true, reason: 'composer_require_failed' }
+    }
+
+    const canUseEmbeddedFallback = !localPath && Boolean(embeddedBridgePath) && !pathRepositoryReady
 
     if (canUseEmbeddedFallback) {
       console.warn('[swagger-ui] WARN Registry install failed, falling back to embedded local bridge package')
@@ -341,7 +378,7 @@ export async function installLaravelBridge(options = {}) {
       console.error('[swagger-ui] ERROR Failed to install Laravel bridge package via composer')
       printComposerDiagnostics(requireResult.stderr, {
         packageName,
-        localPath: localPath ?? undefined,
+        localPath: preferredPath ?? undefined,
         constraint: versionConstraint || undefined,
       })
     }
