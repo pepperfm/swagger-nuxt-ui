@@ -236,9 +236,10 @@ onMounted(async () => {
               </p>
               <p
                 v-if="selectedItem.description"
-                class="mt-4 text-muted-foreground"
-                v-html="selectedItem.description"
-              />
+                class="mt-4 text-muted-foreground whitespace-pre-line"
+              >
+                {{ selectedItem.description }}
+              </p>
 
               <div class="mt-6 space-y-4">
                 <div v-if="selectedEndpointSecurityKey && selectedEndpointSecurityScheme">

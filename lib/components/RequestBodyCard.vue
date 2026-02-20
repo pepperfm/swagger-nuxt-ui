@@ -18,19 +18,19 @@ async function copyContent(content: unknown) {
   }
 }
 
-function renderItems(items?: OpenApiSchemaObject): string | null {
+function renderItems(items?: OpenApiSchemaObject): string[] {
   if (!items) {
-    return null
+    return []
   }
 
   const lines: string[] = []
 
   if (items.type) {
-    lines.push(`Items type: <code class='font-mono'>${items.type}</code>`)
+    lines.push(`Items type: ${items.type}`)
   }
 
   if (items.format && lines.length) {
-    lines[lines.length - 1] += ` · Format: <code class='font-mono'>${items.format}</code>`
+    lines[lines.length - 1] += ` · Format: ${items.format}`
   }
 
   if (items.description) {
@@ -38,12 +38,11 @@ function renderItems(items?: OpenApiSchemaObject): string | null {
   }
 
   if (items.enum?.length) {
-    const badges = items.enum.map(value => `<span class='badge'>${String(value)}</span>`).join(' ')
-    lines.push(`Enum: ${badges}`)
+    lines.push(`Enum: ${items.enum.map(value => String(value)).join(', ')}`)
   }
 
   if (items.example !== undefined) {
-    lines.push(`Example: <code class='font-mono'>${String(items.example)}</code>`)
+    lines.push(`Example: ${String(items.example)}`)
   }
 
   if (items.minLength !== undefined || items.maxLength !== undefined) {
@@ -61,10 +60,11 @@ function renderItems(items?: OpenApiSchemaObject): string | null {
   }
 
   if (items.items) {
-    lines.push(renderItems(items.items) ?? '')
+    const nestedItems = renderItems(items.items)
+    lines.push(...nestedItems.map(line => `- ${line}`))
   }
 
-  return lines.map(line => `<div class='mt-1 text-xs text-muted'>${line}</div>`).join('')
+  return lines
 }
 </script>
 
@@ -144,9 +144,10 @@ function renderItems(items?: OpenApiSchemaObject): string | null {
 
       <div
         v-if="prop.type === 'array' && prop.items"
-        class="mt-1 text-xs text-muted space-y-1"
-        v-html="renderItems(prop.items)"
-      />
+        class="mt-1 text-xs text-muted whitespace-pre-line"
+      >
+        {{ renderItems(prop.items).join('\n') }}
+      </div>
 
       <div
         v-if="prop.nullable"

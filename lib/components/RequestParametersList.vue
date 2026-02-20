@@ -46,9 +46,10 @@ const props = withDefaults(defineProps<{
       </div>
       <p
         v-if="param.description"
-        class="text-sm text-muted mt-1"
-        v-html="param.description"
-      />
+        class="text-sm text-muted mt-1 whitespace-pre-line"
+      >
+        {{ param.description }}
+      </p>
     </div>
   </div>
 </template>
