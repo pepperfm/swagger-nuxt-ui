@@ -1,0 +1,92 @@
+name: Release Library
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+concurrency:
+  group: release-library-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-library:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build library
+        run: pnpm run build:lib
+
+      - name: Verify library artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/lib/index.mjs || (echo "ERROR: dist/lib/index.mjs missing" && exit 1)
+          test -f dist/lib/index.cjs || (echo "ERROR: dist/lib/index.cjs missing" && exit 1)
+          test -f dist/lib/types.d.ts || (echo "ERROR: dist/lib/types.d.ts missing" && exit 1)
+          test -f dist/lib/index.css || (echo "ERROR: dist/lib/index.css missing" && exit 1)
+
+      - name: Upload library artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: swagger-ui-library-dist
+          path: dist/lib
+          if-no-files-found: error
+
+  publish-npm:
+    if: ${{ github.event_name == 'release' }}
+    needs: build-library
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node and npm registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build library
+        run: pnpm run build:lib
+
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

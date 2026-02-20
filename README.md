@@ -1,39 +1,95 @@
 # Swagger Nuxt UI
 
-> Local-first OpenAPI/Swagger documentation viewer built with Nuxt 4 and Nuxt UI 4.
+> Nuxt 4 demo app + reusable Vue 3 Swagger UI library powered by Nuxt UI 4.
 
-Swagger Nuxt UI reads schema data from `resources/api-docs/api-docs.json` via the internal `GET /api/swagger` endpoint and renders endpoints, request details, response examples, and schema references.
+Repository roles:
 
-## Quick Start
+- **Demo app**: loads local schema from `resources/api-docs/api-docs.json` through `GET /api/swagger-ui` (alias `GET /api/swagger`).
+- **Library package**: exports `SwaggerViewer`, reusable cards/navigation components, and typed composables.
+
+## Quick Start (Demo App)
 
 ```bash
 bun install
-bun run dev
-```
-
-Alternative package manager:
-
-```bash
-pnpm install
-pnpm dev
+bun run dev:app
 ```
 
 Open `http://localhost:3000`.
 
-## Local Schema Workflow
+## Build Library Artifacts
 
-1. Put a valid OpenAPI JSON into `resources/api-docs/api-docs.json`.
-2. Start the app.
-3. Browse endpoints and schemas from the left navigation.
-4. Optionally set `NUXT_BASE_API_URL` to control the copied full endpoint URL.
+```bash
+bun run build:lib
+```
 
-## Key Features
+Artifacts are generated in `dist/lib`:
 
-- **Local schema source**: fixed local file pipeline through `/api/swagger`.
-- **Endpoint navigation**: operations grouped by tags.
-- **Request/response view**: parameters, request body, security, and examples.
-- **Schema browser**: navigation and rendering for `components.schemas`.
-- **Typed composables**: loading, navigation derivation, and selected-operation state split into composables.
+- `index.mjs`
+- `index.cjs`
+- `types.d.ts`
+- `index.css`
+
+## Package API
+
+- Entry: `@pepperfm/swagger-nuxt-ui`
+- Styles: `@pepperfm/swagger-nuxt-ui/styles.css`
+
+## Nuxt Consumer Example
+
+```vue
+<script setup lang="ts">
+import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
+</script>
+
+<template>
+  <SwaggerViewer
+    schema-source="/api/swagger-ui"
+    base-api-url="https://api.example.com"
+    schema-headline="./resources/api-docs/api-docs.json"
+  />
+</template>
+```
+
+In global CSS:
+
+```css
+@import "@pepperfm/swagger-nuxt-ui/styles.css";
+```
+
+## Laravel + Inertia/Vite Consumer Example
+
+```vue
+<script setup lang="ts">
+import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
+import '@pepperfm/swagger-nuxt-ui/styles.css'
+</script>
+
+<template>
+  <SwaggerViewer
+    schema-source="/api/swagger-ui"
+    base-api-url="/api"
+    schema-headline="Local OpenAPI schema"
+  />
+</template>
+```
+
+## Laravel Bridge Auto-Install
+
+On package install, the postinstall script tries to bootstrap a Laravel bridge package in Laravel hosts:
+
+- Composer package: `pepperfm/swagger-ui-laravel-bridge`
+- Default bridge route: `/api/swagger-ui`
+
+Optional env flags:
+
+- `SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1` -> skip composer bridge install.
+- `SWAGGER_UI_BRIDGE_STRICT=1` -> fail install when bridge bootstrap fails.
+- `SWAGGER_UI_BRIDGE_PACKAGE=vendor/package` -> override composer package name.
+
+## Minimal Logging Model
+
+- `WARN`: unsupported schema shape, missing schema source, missing referenced schema nodes.
+- `ERROR`: schema load failure and malformed local schema parsing.
 
 ---
 
@@ -41,11 +97,11 @@ Open `http://localhost:3000`.
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs/getting-started.md) | Prerequisites, install, run, and first local schema load |
+| [Getting Started](docs/getting-started.md) | Demo setup and consumer setup |
 | [Architecture](docs/architecture.md) | Layered structure and dependency rules |
-| [API Reference](docs/api.md) | Internal API and composable contracts |
-| [Configuration](docs/configuration.md) | Runtime variables and schema file contract |
-| [Deployment](docs/deployment.md) | Build, preview, Docker, and VPS workflow |
+| [API Reference](docs/api.md) | Endpoint behavior and library API |
+| [Configuration](docs/configuration.md) | Runtime and library build configuration |
+| [Deployment](docs/deployment.md) | Demo deploy and library release flow |
 | [Contributing](docs/contributing.md) | Quality checks and contribution process |
 
 ## AI Context
@@ -53,7 +109,3 @@ Open `http://localhost:3000`.
 - Project description: `.ai-factory/DESCRIPTION.md`
 - Architecture guidelines: `.ai-factory/ARCHITECTURE.md`
 - Project map: `AGENTS.md`
-
-## License
-
-No license file is currently defined in this repository.

@@ -3,89 +3,95 @@
 > Project map for AI agents. Keep this file up-to-date as the project evolves.
 
 ## Project Overview
-Nuxt 4 application for loading and browsing OpenAPI/Swagger schemas with a Nuxt UI interface.
+Nuxt 4 + Nuxt UI 4 repository with dual purpose:
 
-Primary behavior is in client-side Vue composables and page logic, with a small server endpoint that reads the local schema file from `resources/api-docs/api-docs.json`.
+- Demo application for browsing local OpenAPI schema.
+- Reusable Vue library package (`@pepperfm/swagger-nuxt-ui`) sourced from `lib/`.
+- Laravel bridge Composer package (`pepperfm/swagger-ui-laravel-bridge`) sourced from `packages/laravel-bridge`.
 
 ## Tech Stack
 - **Language:** TypeScript
 - **Framework:** Nuxt 4 (Vue 3)
 - **UI:** Nuxt UI 4
+- **Packaging:** Vite library mode + `vue-tsc`
 - **Database:** None
 - **ORM:** None
 
 ## Project Structure
 ```text
 app/
-├── app.vue                        # Global app layout (UApp, header, footer)
-├── app.config.ts                  # Nuxt UI app-level configuration
-├── assets/css/main.css            # Global styles
-├── components/                    # Reusable UI elements for docs rendering
-├── composables/
-│   ├── useOpenApiSchema.ts        # Schema loading and error state
-│   ├── useSwaggerNavigation.ts    # Endpoint/schema navigation derivation
-│   ├── useSelectedOperation.ts    # Selected item + endpoint details derivation
-│   ├── schemaExample.ts           # Example payload generation from schema
-│   └── useCopy.ts                 # Clipboard helper
-├── pages/
-│   └── index.vue                  # Main API docs page
-└── types/
-    └── types.d.ts                 # OpenAPI/Swagger TypeScript contracts
+├── app.vue
+├── app.config.ts
+├── assets/css/main.css
+├── components/                    # Adapters to lib components
+├── composables/                   # Adapters to lib composables
+├── pages/index.vue                # Demo page consuming SwaggerViewer from lib
+└── types/types.d.ts               # App-level type aliases/contracts
+
+lib/
+├── index.ts                       # Public package API
+├── types.ts                       # Public OpenAPI contracts
+├── components/                    # Library-owned UI components
+├── composables/                   # Library-owned composables
+└── styles/swagger-ui.css          # Library stylesheet
 
 server/
 └── api/
-    └── swagger.ts                 # Local schema reader endpoint
+    ├── swagger.ts                 # Local schema reader endpoint
+    └── swagger-ui.ts              # Alias endpoint matching bridge route
 
 resources/
-└── api-docs/
-    └── api-docs.json              # Local OpenAPI schema source
+└── api-docs/api-docs.json         # Local OpenAPI source
 
-public/
-├── favicon.ico
-└── logo.svg
+packages/laravel-bridge/
+├── composer.json                  # Bridge package manifest (auto-discovery)
+├── config/swagger-ui-bridge.php   # Bridge route/schema config
+├── routes/swagger-ui.php          # GET /api/swagger-ui route registration
+└── src/                           # Service provider, resolver, controller
 
-docs/                              # Project documentation pages
+scripts/
+├── postinstall.mjs                # npm lifecycle orchestration
+├── install-laravel-bridge.mjs     # Best-effort composer bridge installer
+└── lib/                           # Script helpers
+
+docs/
 ├── getting-started.md
 ├── architecture.md
 ├── api.md
 ├── configuration.md
 ├── deployment.md
 └── contributing.md
-
-.codex/skills/                     # Project-local Codex skills (AI Factory suite)
-.claude/skills/                    # Project-local Claude skills (AI Factory suite)
 ```
 
 ## Key Entry Points
 | File | Purpose |
 |------|---------|
-| `nuxt.config.ts` | Core Nuxt modules, runtime config, route rules, and lint config |
-| `app/app.vue` | Global UI shell and SEO meta setup |
-| `app/pages/index.vue` | Main OpenAPI viewer flow and endpoint/schema selection logic |
-| `app/composables/useOpenApiSchema.ts` | Schema fetch/state composable used by the page |
-| `app/composables/useSwaggerNavigation.ts` | Navigation derivation for endpoints and schemas |
-| `app/composables/useSelectedOperation.ts` | Selection state and derived operation metadata |
-| `server/api/swagger.ts` | Server-side local schema file reader |
-| `package.json` | Scripts and dependency manifest |
+| `package.json` | Scripts and package metadata for app + library builds |
+| `vite.lib.config.ts` | Library bundle configuration |
+| `tsconfig.lib.json` | Library declaration build configuration |
+| `lib/index.ts` | Library public API exports |
+| `lib/components/SwaggerViewer.vue` | Main reusable viewer component |
+| `app/pages/index.vue` | Demo host integration of library |
+| `server/api/swagger.ts` | Local schema endpoint implementation |
+| `server/api/swagger-ui.ts` | Demo alias route (`/api/swagger-ui`) |
+| `packages/laravel-bridge/src/SwaggerUiBridgeServiceProvider.php` | Laravel bridge service provider |
+| `scripts/postinstall.mjs` | npm postinstall orchestration for bridge bootstrap |
 
 ## Documentation
 | Document | Path | Description |
 |----------|------|-------------|
-| README | `README.md` | Project landing page and docs index |
-| Getting Started | `docs/getting-started.md` | Install, run, and first local schema load |
-| Architecture | `docs/architecture.md` | Layering, boundaries, and data flow |
-| API Reference | `docs/api.md` | Internal API endpoint and composables |
-| Configuration | `docs/configuration.md` | Runtime config and environment variables |
-| Deployment | `docs/deployment.md` | Build/deploy workflow and Docker usage |
-| Contributing | `docs/contributing.md` | Contribution and validation checklist |
-| Project Description | `.ai-factory/DESCRIPTION.md` | Project specification and detected stack |
-| Architecture | `.ai-factory/ARCHITECTURE.md` | Architecture decisions and development rules |
+| README | `README.md` | Overview of demo and library usage |
+| Getting Started | `docs/getting-started.md` | Local run and consumer setup |
+| Architecture | `docs/architecture.md` | Layering and dependency boundaries |
+| API Reference | `docs/api.md` | Server endpoint and library API |
+| Configuration | `docs/configuration.md` | Runtime/build configuration |
+| Deployment | `docs/deployment.md` | Demo deploy and release workflow |
+| Contributing | `docs/contributing.md` | Validation checklist |
 
 ## AI Context Files
 | File | Purpose |
 |------|---------|
-| `AGENTS.md` | This file — project structure map |
-| `.ai-factory/DESCRIPTION.md` | Project specification and tech stack |
-| `.ai-factory/ARCHITECTURE.md` | Architecture decisions and guidelines |
-| `.ai-factory.json` | AI Factory agent skill/mcp install state |
-| `.mcp.json` | Project-level MCP server configuration |
+| `AGENTS.md` | This project map |
+| `.ai-factory/DESCRIPTION.md` | Project specification and stack |
+| `.ai-factory/ARCHITECTURE.md` | Architecture rules and boundaries |
+| `.ai-factory/plans/*.md` | Implementation plans and progress |

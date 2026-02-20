@@ -1,0 +1,16 @@
+.swagger-ui-viewer {
+  --swagger-card-radius: 0.75rem;
+}
+
+.swagger-ui-viewer .swagger-ui-navigation button {
+  border-radius: var(--swagger-card-radius);
+}
+
+.swagger-ui-viewer pre {
+  tab-size: 2;
+  word-break: break-word;
+}
+
+.swagger-ui-viewer code {
+  font-variant-ligatures: none;
+}

@@ -1,0 +1,22 @@
+{
+  "name": "pepperfm/swagger-ui-laravel-bridge",
+  "description": "Laravel bridge route for @pepperfm/swagger-nuxt-ui",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "illuminate/support": ">=10.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Pepperfm\\SwaggerUiBridge\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Pepperfm\\SwaggerUiBridge\\SwaggerUiBridgeServiceProvider"
+      ]
+    }
+  }
+}

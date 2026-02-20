@@ -5,61 +5,74 @@
 ## Prerequisites
 
 - Node.js 20+
-- `bun` or `pnpm` (`packageManager` is pinned to `pnpm@10.12.1`)
+- `bun` or `pnpm`
+- Vue 3 host app (Nuxt or Laravel + Inertia/Vite)
 
-## Installation
+## Demo App Setup
 
 ```bash
 bun install
+bun run dev:app
 ```
 
-Alternative:
+Open `http://localhost:3000`.
+
+### Local Schema Contract
+
+- File path: `resources/api-docs/api-docs.json`
+- Required fields: `openapi`, `info`, `paths`
+- Format: valid JSON
+
+Failure behavior:
+
+- Missing file -> API `404`, server logs `WARN`
+- Invalid JSON -> API `500`, server logs `ERROR`
+
+## Library Consumer Setup
+
+Install package and peer requirements:
 
 ```bash
-pnpm install
+pnpm add @pepperfm/swagger-nuxt-ui @nuxt/ui @vueuse/core
 ```
 
-## Run Development Server
+Import styles:
+
+```css
+@import "@pepperfm/swagger-nuxt-ui/styles.css";
+```
+
+Use component:
+
+```vue
+<script setup lang="ts">
+import { SwaggerViewer } from '@pepperfm/swagger-nuxt-ui'
+</script>
+
+<template>
+  <SwaggerViewer schema-source="/api/swagger-ui" base-api-url="/api" />
+</template>
+```
+
+For Laravel hosts, package postinstall attempts to install the bridge package automatically and expose `/api/swagger-ui`.
+
+Opt-out:
 
 ```bash
-bun run dev
+SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1 bun add @pepperfm/swagger-nuxt-ui
 ```
 
-Alternative:
-
-```bash
-pnpm dev
-```
-
-App is available at `http://localhost:3000`.
-
-## First Local Schema Load
-
-1. Ensure `resources/api-docs/api-docs.json` exists.
-2. Put a valid OpenAPI 3.x JSON object in that file.
-3. Open the app home page; schema is loaded automatically.
-4. Browse tags and operations from the sidebar.
-
-## Schema File Contract
-
-- Path: `resources/api-docs/api-docs.json`
-- Required top-level fields: `openapi`, `info`, `paths`
-- Format: valid JSON (not YAML)
-
-If the file is missing, server returns `404` and logs a `WARN`.
-If the file contains invalid JSON, server returns `500` and logs an `ERROR`.
-
-## Useful Commands
+## Build Commands
 
 ```bash
 bun run lint
 bun run typecheck
-bun run build
-bun run preview
+bun run build:app
+bun run build:lib
 ```
 
 ## See Also
 
-- [Architecture](architecture.md) - project layout and dependency boundaries.
-- [Configuration](configuration.md) - runtime and app configuration.
-- [API Reference](api.md) - server endpoint and composable contracts.
+- [API Reference](api.md)
+- [Configuration](configuration.md)
+- [Deployment](deployment.md)

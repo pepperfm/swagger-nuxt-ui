@@ -2,66 +2,109 @@
 
 # API Reference
 
-## Internal Server Endpoint
+## Server Endpoints (Demo + Bridge)
 
 ### `GET /api/swagger`
 
-Returns OpenAPI JSON from local file `resources/api-docs/api-docs.json`.
+Reads and returns JSON from `resources/api-docs/api-docs.json`.
 
-#### Success Response
+Responses:
 
-- `200` with parsed JSON payload.
+- `200`: parsed OpenAPI JSON
+- `404`: schema file missing
+- `500`: invalid JSON in schema file
 
-#### Error Cases
+Logs:
 
-- Missing schema file -> `404` + message `Expected schema file at resources/api-docs/api-docs.json`.
-- Invalid schema JSON -> `500` + message `Schema file is not valid JSON`.
+- `WARN`: missing schema file
+- `ERROR`: JSON parse failure
 
-Logging:
+### `GET /api/swagger-ui` (Laravel bridge contract)
 
-- Missing file logs `WARN` in `server/api/swagger.ts`.
-- Parse failure logs `ERROR` in `server/api/swagger.ts`.
+Returns OpenAPI JSON for Laravel consumers.
 
-## Client-Side API Surface
+Schema source resolution priority:
 
-### `useOpenApiSchema()` (`app/composables/useOpenApiSchema.ts`)
+1. `config('swagger-ui-bridge.schema_path')` when explicitly configured.
+2. `l5-swagger` generated docs path from Laravel config (if available).
+3. Fallback `storage/api-docs/api-docs.json`.
 
-Returns:
+Responses:
 
-- `schema`: reactive OpenAPI document (`IApiSpec | null`).
-- `isLoading`: loading state.
-- `loadError`: typed load error (`missing_source`, `invalid_schema`, `fetch_error`).
-- `defaultSchemaEndpoint`: default endpoint (`/api/swagger`).
-- `loadSchema(source?)`: loads schema and normalizes errors.
+- `200`: parsed OpenAPI JSON
+- `404`: schema file missing for all resolution candidates
+- `422`: schema file exists but contains invalid JSON
 
-### `useSwaggerNavigation()` (`app/composables/useSwaggerNavigation.ts`)
+Error body contract:
 
-Returns:
+```json
+{
+  "message": "OpenAPI schema file not found",
+  "code": "schema_file_not_found"
+}
+```
 
-- `endpointNavigation`: grouped endpoint navigation by first tag.
-- `schemaNavigation`: schemas navigation derived from `components.schemas`.
+```json
+{
+  "message": "OpenAPI schema JSON is invalid",
+  "code": "schema_json_invalid"
+}
+```
 
-### `useSelectedOperation()` (`app/composables/useSelectedOperation.ts`)
+## Library Exports
 
-Returns:
+Entry: `@pepperfm/swagger-nuxt-ui`
 
-- `selectedItem`: current endpoint/schema selection.
-- `onSelect(item)`: updates selection.
-- `getMethodConfig(operationId)`
-- `getParameters(operationId)`
-- `getRequestBodySchema(operationId)`
-- `getSecurity(operationId)`
+- `SwaggerViewer`
+- `ContentNavigation`
+- `RequestParametersList`
+- `RequestBodyCard`
+- `ResponseExampleCard`
+- `SchemaDetailCard`
+- `useSwaggerSchema`
+- `useSwaggerNavigation`
+- `useSelectedOperation`
+- `generateExampleFromSchema`
+- `createSwaggerUiPlugin`
+- OpenAPI types from `lib/types.ts`
 
-### `generateExampleFromSchema()` (`app/composables/schemaExample.ts`)
+Styles entry:
 
-Generates example values from OpenAPI schema nodes, including:
+- `@pepperfm/swagger-nuxt-ui/styles.css`
 
-- `$ref` resolution via `components.schemas`
-- `allOf` / `oneOf` / `anyOf` handling
-- primitives and nested objects/arrays
+## `SwaggerViewer` Component Contract
+
+Props:
+
+- `schemaSource?: string` (default `/api/swagger-ui`)
+- `baseApiUrl?: string`
+- `schemaHeadline?: string`
+- `titleFallback?: string`
+- `descriptionFallback?: string`
+
+Events:
+
+- `schema-error` (`SwaggerSchemaLoadError`)
+- `schema-loaded` (`IApiSpec`)
+
+## Composable Contract Highlights
+
+### `useSwaggerSchema(strategy?)`
+
+- Supports local endpoint and explicit URL source input.
+- Exposes `schema`, `isLoading`, `loadError`, `loadSchema`, `defaultSource`.
+
+### `useSwaggerNavigation(schemaRef)`
+
+- Builds endpoint groups and schema navigation nodes.
+- Logs `WARN` on unsupported/invalid operation records.
+
+### `useSelectedOperation({ schema, endpointNavigation })`
+
+- Maintains selected endpoint/schema item.
+- Resolves request params, security, and request body schema.
 
 ## See Also
 
-- [Architecture](architecture.md) - where API logic sits in layers.
-- [Getting Started](getting-started.md) - local schema setup.
-- [Configuration](configuration.md) - runtime config defaults.
+- [Getting Started](getting-started.md)
+- [Configuration](configuration.md)

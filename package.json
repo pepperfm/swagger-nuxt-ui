@@ -1,28 +1,52 @@
 {
-  "name": "nuxt-ui-pro-starter",
+  "name": "@pepperfm/swagger-nuxt-ui",
   "type": "module",
-  "private": true,
+  "private": false,
   "packageManager": "pnpm@10.12.1",
+  "exports": {
+    ".": {
+      "types": "./dist/lib/types.d.ts",
+      "import": "./dist/lib/index.mjs",
+      "require": "./dist/lib/index.cjs"
+    },
+    "./styles.css": "./dist/lib/index.css"
+  },
+  "main": "./dist/lib/index.cjs",
+  "module": "./dist/lib/index.mjs",
+  "types": "./dist/lib/types.d.ts",
+  "files": [
+    "dist/lib",
+    "scripts"
+  ],
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "bun run dev:app",
+    "dev:app": "nuxt dev",
+    "build": "bun run build:app",
+    "build:app": "nuxt build",
+    "build:lib": "vite build --config vite.lib.config.ts && vue-tsc -p tsconfig.lib.json --declaration --emitDeclarationOnly",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "node ./scripts/postinstall.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "typecheck": "nuxt typecheck"
   },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.49",
     "@nuxt/ui": "^4.4.0",
+    "@vueuse/core": "^13.9.0",
     "nuxt": "^4.3.1"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.3.0",
     "@nuxt/eslint": "^1.4.1",
+    "@vitejs/plugin-vue": "^6.0.1",
     "eslint": "^9.35.0",
     "typescript": "^5.8.3",
+    "vite": "^7.3.1",
     "vue-tsc": "^2.2.10"
   },
   "pnpm": {
@@ -35,5 +59,8 @@
   "resolutions": {
     "estree-walker": "2.0.2",
     "unimport": "4.1.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

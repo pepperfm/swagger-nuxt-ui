@@ -2,51 +2,54 @@
 
 # Configuration
 
-## Runtime Configuration (`nuxt.config.ts`)
+## Demo Runtime Config (`nuxt.config.ts`)
 
-Public runtime settings:
+| Key | Env Variable | Default |
+|-----|--------------|---------|
+| `runtimeConfig.public.apiHost` | `NUXT_BASE_API_HOST` | `http://localhost` |
+| `runtimeConfig.public.apiUrl` | `NUXT_BASE_API_URL` | `http://localhost/api` |
 
-| Key | Env Variable | Default | Purpose |
-|-----|--------------|---------|---------|
-| `runtimeConfig.public.apiHost` | `NUXT_BASE_API_HOST` | `http://localhost` | Host label used in UI/runtime context |
-| `runtimeConfig.public.apiUrl` | `NUXT_BASE_API_URL` | `http://localhost/api` | Base URL used to build copied endpoint URLs |
+`apiUrl` is used for copied full endpoint links inside viewer UI.
 
-## Schema Source Configuration
+## Library Build Config
 
-Schema source is fixed to local file mode:
+- `vite.lib.config.ts`: library bundle config (ESM + CJS)
+- `tsconfig.lib.json`: declaration generation for public API
+- Entry point: `lib/index.ts`
+- CSS output: `dist/lib/index.css`
 
-- Client load endpoint: `GET /api/swagger`
-- Local file path: `resources/api-docs/api-docs.json`
+## Scripts
 
-Remote schema URLs are not accepted anymore.
+- `dev:app`: run Nuxt demo app
+- `build:app`: build Nuxt demo app
+- `build:lib`: build distributable library bundle and declarations
 
-## Nuxt Modules
+## Schema Source Strategy
 
-Configured modules:
+`useSwaggerSchema` supports:
 
-- `@nuxt/eslint`
-- `@nuxt/ui`
+- default local source (`/api/swagger-ui`)
+- explicit override source via `loadSchema(source)`
+- custom `fetcher` injection
 
-## UI and Route Rules
+## Laravel Bridge Config
 
-- Global stylesheet: `app/assets/css/main.css`
-- Root route prerender: `routeRules['/'] = { prerender: true }`
-- Compatibility date: `compatibilityDate = '2025-01-15'`
+Bridge package config key: `swagger-ui-bridge`.
 
-## Local Environment Files
+Defaults:
 
-- `.env` for local overrides
-- `.env.example` as baseline template
+- `enabled: true`
+- `route.path: /api/swagger-ui`
+- `route.name: swagger-ui.bridge.schema`
+- `route.middleware: ['web']`
+- `schema_path: null` (auto resolve through `l5-swagger` then fallback to `storage/api-docs/api-docs.json`)
 
 ## Logging Policy
 
-Minimal logging is used:
-
-- `WARN`: missing schema source/file or invalid operation records
-- `ERROR`: terminal schema load/parse failures
+- `WARN`: invalid schema shape, unsupported method records, missing refs/sources
+- `ERROR`: schema fetch failures and unrecoverable parse failures
 
 ## See Also
 
-- [Deployment](deployment.md) - production and container runtime settings.
-- [Architecture](architecture.md) - config impact on layers.
-- [Contributing](contributing.md) - validation commands before merge.
+- [API Reference](api.md)
+- [Deployment](deployment.md)
