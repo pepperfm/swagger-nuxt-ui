@@ -25,12 +25,11 @@
   ],
   "scripts": {
     "dev": "nuxt dev",
-    "dev:app": "nuxt dev",
     "build": "nuxt build",
-    "build:app": "nuxt build",
     "build:lib": "vite build --config vite.lib.config.ts && vue-tsc -p tsconfig.lib.json --declaration --emitDeclarationOnly",
     "build:viewer": "vite build --logLevel error --config vite.viewer.config.ts",
     "build:bridge-assets": "vite build --logLevel error --config vite.viewer.config.ts && node ./scripts/sync-bridge-viewer-assets.mjs",
+    "prepublishOnly": "npm run build:lib && npm run build:bridge-assets",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "bridge:install": "node ./scripts/cli/install-bridge.mjs",
