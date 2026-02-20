@@ -32,9 +32,48 @@ const isJsonBody = computed(() => {
   return typeof props.contentType === 'string' && props.contentType.toLowerCase().includes('json')
 })
 
+const isMultipartBody = computed(() => {
+  return typeof props.contentType === 'string' && props.contentType.toLowerCase().includes('multipart/form-data')
+})
+
+const isUrlEncodedBody = computed(() => {
+  return typeof props.contentType === 'string' && props.contentType.toLowerCase().includes('application/x-www-form-urlencoded')
+})
+
 const isFormDisabled = computed(() => props.formInputs.length === 0)
 
 const rawTabLabel = computed(() => (isJsonBody.value ? 'JSON' : 'Raw'))
+const contentTypeBadgeColor = computed(() => {
+  if (isJsonBody.value) {
+    return 'info'
+  }
+
+  if (isMultipartBody.value) {
+    return 'warning'
+  }
+
+  if (isUrlEncodedBody.value) {
+    return 'primary'
+  }
+
+  return 'neutral'
+})
+
+const contentTypeHint = computed(() => {
+  if (isMultipartBody.value) {
+    return 'FORM mode uses multipart payload encoding.'
+  }
+
+  if (isUrlEncodedBody.value) {
+    return 'FORM mode uses URL-encoded payload encoding.'
+  }
+
+  if (isJsonBody.value) {
+    return null
+  }
+
+  return 'RAW mode sends body as plain text.'
+})
 
 const tabItems = computed(() => [
   {
@@ -93,11 +132,18 @@ const formValuesModel = computed<RequestBodyFormValueMap>({
       <UBadge
         size="sm"
         variant="soft"
-        color="info"
+        :color="contentTypeBadgeColor"
       >
         {{ contentType || 'application/json' }}
       </UBadge>
     </div>
+
+    <p
+      v-if="contentTypeHint"
+      class="text-xs text-muted"
+    >
+      {{ contentTypeHint }}
+    </p>
 
     <div class="flex items-center justify-between gap-2">
       <span class="text-xs text-muted">Body source</span>

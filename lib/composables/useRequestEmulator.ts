@@ -390,16 +390,16 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
     requestBodyFormWarnings.value = [...new Set(nextWarnings)]
   }
 
-  function syncFormFromJsonText(reason: 'init' | 'json-edit' | 'mode-switch') {
+  function syncFormFromJsonText(reason: 'init' | 'json-edit' | 'mode-switch'): 'skipped' | 'empty' | 'success' | 'invalid' {
     if (!isJsonRequestBody.value || requestBodyFormInputs.value.length === 0) {
       requestBodyJsonWarning.value = null
-      return
+      return 'skipped'
     }
 
     const raw = requestBodyText.value.trim()
     if (!raw) {
       requestBodyJsonWarning.value = null
-      return
+      return 'empty'
     }
 
     try {
@@ -422,9 +422,11 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
         ...hydrated.warnings,
       ])
       requestBodyJsonWarning.value = null
+      return 'success'
     } catch (error) {
       requestBodyJsonWarning.value = 'Invalid JSON. Form values were kept unchanged.'
       emitWarningOnce('[useRequestEmulator] Failed to parse request body JSON while hydrating form values', { reason, error })
+      return 'invalid'
     }
   }
 
@@ -773,8 +775,10 @@ export function useRequestEmulator(options: UseRequestEmulatorOptions) {
       return
     }
 
-    syncFormFromJsonText('mode-switch')
-    syncJsonTextFromFormValues()
+    const syncResult = syncFormFromJsonText('mode-switch')
+    if (syncResult === 'success') {
+      syncJsonTextFromFormValues()
+    }
   })
 
   return {
