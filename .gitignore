@@ -29,3 +29,6 @@ logs
 .agents
 .ai-factory*
 .mcp.json
+
+auto-imports.d.ts
+components.d.ts

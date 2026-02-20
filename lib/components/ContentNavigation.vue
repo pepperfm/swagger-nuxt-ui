@@ -17,6 +17,12 @@ const props = withDefaults(defineProps<{
 defineEmits<{
   (e: 'select', item: INavigationItem): void
 }>()
+
+const accordionUi = {
+  trigger: 'px-3 py-2.5',
+  label: 'ps-1 text-sm font-semibold',
+  trailingIcon: 'pe-1',
+}
 </script>
 
 <template>
@@ -30,15 +36,10 @@ defineEmits<{
         :items="props.navigation"
         label-key="title"
         value-key="_path"
+        :ui="accordionUi"
       >
-        <template #leading="{ item }">
-          <div class="text-xs font-semibold tracking-wide text-muted pl-4">
-            {{ item.title }}
-          </div>
-        </template>
-
         <template #body="{ item }">
-          <ul class="pl-5 space-y-3 mt-2">
+          <ul class="pl-4 space-y-3 mt-2">
             <li
               v-for="child in item.children ?? []"
               :key="child._path"
