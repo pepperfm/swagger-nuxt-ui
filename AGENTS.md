@@ -37,8 +37,8 @@ lib/
 
 bridge-viewer/
 ├── main.ts                        # Standalone browser entrypoint for Laravel page
-├── App.vue                        # Viewer shell wrapping SwaggerViewer
-└── styles.css                     # Tailwind + Nuxt UI + viewer styles
+├── App.vue                        # Page shell: UHeader + UMain + UFooter + dark mode
+└── styles.css                     # Tailwind + Nuxt UI + green theme + viewer styles
 
 server/
 └── api/

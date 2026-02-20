@@ -53,6 +53,14 @@ Schema resolution order:
 - `viewer.route.name: swagger-ui.bridge.viewer`
 - `viewer.route.middleware: ['web']`
 
+The viewer page renders a full Nuxt UI layout:
+
+- **UHeader** with the configured `viewer.title` and a dark/light mode toggle
+- **UMain** wrapping the SwaggerViewer component (sidebar + content)
+- **UFooter** with copyright and a second color mode toggle
+
+The `viewer.title` value flows through to the page `<title>` tag and the header text.
+
 Viewer assets are served from bridge package route:
 
 - `GET <viewer.route.path>/assets/viewer.css`
