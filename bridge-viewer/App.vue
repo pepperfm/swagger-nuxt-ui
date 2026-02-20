@@ -69,24 +69,25 @@ function handleSchemaLoaded() {
     </UHeader>
 
     <UMain>
-      <UContainer class="py-6 lg:py-10">
+      <UContainer
+        v-if="fatalErrorMessage"
+        class="py-6"
+      >
         <UAlert
-          v-if="fatalErrorMessage"
           title="Viewer bootstrap error"
           :description="fatalErrorMessage"
           color="error"
           variant="soft"
-          class="mb-6"
-        />
-
-        <SwaggerViewer
-          :schema-source="schemaSource"
-          :schema-headline="schemaHeadline"
-          :base-api-url="baseApiUrl"
-          @schema-error="handleSchemaError"
-          @schema-loaded="handleSchemaLoaded"
         />
       </UContainer>
+
+      <SwaggerViewer
+        :schema-source="schemaSource"
+        :schema-headline="schemaHeadline"
+        :base-api-url="baseApiUrl"
+        @schema-error="handleSchemaError"
+        @schema-loaded="handleSchemaLoaded"
+      />
     </UMain>
 
     <USeparator />
