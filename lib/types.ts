@@ -30,6 +30,58 @@ export interface OpenApiSecurityScheme {
   bearerFormat?: string
 }
 
+export type OpenApiParameterLocation = 'path' | 'query' | 'header' | 'cookie'
+
+export interface RequestEmulatorParamInput {
+  key: string
+  name: string
+  in: OpenApiParameterLocation
+  required: boolean
+  type: string
+  description?: string
+  value: string
+}
+
+export interface RequestEmulatorAuthInput {
+  securityKey: string | null
+  token: string
+}
+
+export interface RequestEmulatorValidationError {
+  field: string
+  message: string
+}
+
+export interface RequestEmulatorPreparedRequest {
+  url: string
+  method: HttpMethod
+  headers: Record<string, string>
+  bodyText: string | null
+  curl: string
+}
+
+export interface RequestEmulatorResponseResult {
+  status: number
+  statusText: string
+  ok: boolean
+  elapsedMs: number
+  headers: Record<string, string>
+  body: unknown
+  bodyText: string
+  bodyKind: 'json' | 'text' | 'empty'
+}
+
+export interface RequestEmulatorExecutionError {
+  code: 'invalid_request' | 'network_error' | 'unexpected_error'
+  message: string
+}
+
+export interface RequestEmulatorExecutionState {
+  isSending: boolean
+  result: RequestEmulatorResponseResult | null
+  error: RequestEmulatorExecutionError | null
+}
+
 export interface INavigationItem {
   _path: string
   title: string
@@ -72,6 +124,7 @@ export interface IMethod {
   operationId: string
   parameters?: IParameter[]
   requestBody?: {
+    required?: boolean
     content: {
       [contentType: string]: {
         schema?: OpenApiSchemaObject
@@ -82,6 +135,10 @@ export interface IMethod {
   responses: {
     [statusCode: string]: IResponse
   }
+  servers?: Array<{
+    url: string
+    description?: string
+  }>
   security?: Array<Record<string, string[]>>
 }
 

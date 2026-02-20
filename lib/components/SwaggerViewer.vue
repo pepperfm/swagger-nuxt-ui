@@ -8,6 +8,7 @@ import { useSelectedOperation } from '../composables/useSelectedOperation'
 import { useSwaggerNavigation } from '../composables/useSwaggerNavigation'
 import { useSwaggerSchema } from '../composables/useSwaggerSchema'
 import ContentNavigation from './ContentNavigation.vue'
+import EndpointRequestCard from './EndpointRequestCard.vue'
 import RequestBodyCard from './RequestBodyCard.vue'
 import RequestParametersList from './RequestParametersList.vue'
 import ResponseExampleCard from './ResponseExampleCard.vue'
@@ -19,6 +20,8 @@ interface SwaggerViewerProps {
   schemaHeadline?: string
   titleFallback?: string
   descriptionFallback?: string
+  enableRequestEmulator?: boolean
+  requestTimeoutMs?: number
 }
 
 const props = withDefaults(defineProps<SwaggerViewerProps>(), {
@@ -27,6 +30,8 @@ const props = withDefaults(defineProps<SwaggerViewerProps>(), {
   schemaHeadline: './resources/api-docs/api-docs.json',
   titleFallback: 'API Docs',
   descriptionFallback: 'OpenAPI schema viewer',
+  enableRequestEmulator: true,
+  requestTimeoutMs: 0,
 })
 
 const emit = defineEmits<{
@@ -98,6 +103,14 @@ const selectedEndpointSecurityScheme = computed(() => {
   }
 
   return securitySchemes.value[selectedEndpointSecurityKey.value] ?? null
+})
+
+const selectedEndpoint = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
+    return null
+  }
+
+  return selectedItem.value
 })
 
 const example = computed(() => {
@@ -313,8 +326,23 @@ onMounted(async () => {
       </template>
 
       <template #right>
-        <UPageAside v-if="schema && !isLoading && selectedItem?.type === 'schema'">
-          <div class="w-full">
+        <UPageAside v-if="schema && !isLoading">
+          <EndpointRequestCard
+            v-if="props.enableRequestEmulator && selectedEndpoint"
+            :endpoint="selectedEndpoint"
+            :method="selectedEndpointMethod"
+            :parameters="selectedEndpointParameters"
+            :components="components"
+            :security-key="selectedEndpointSecurityKey"
+            :security-scheme="selectedEndpointSecurityScheme"
+            :base-api-url="normalizedBaseApiUrl"
+            :request-timeout-ms="props.requestTimeoutMs"
+          />
+
+          <div
+            v-else-if="selectedItem?.type === 'schema'"
+            class="w-full"
+          >
             <pre
               class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
               title="Click to copy example"

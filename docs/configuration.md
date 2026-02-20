@@ -11,6 +11,22 @@
 
 `apiUrl` is used for copied full endpoint links inside viewer UI.
 
+## Viewer Runtime Options (`SwaggerViewer`)
+
+| Prop | Default | Description |
+|------|---------|-------------|
+| `schemaSource` | `/api/swagger-ui` | OpenAPI JSON endpoint |
+| `baseApiUrl` | `''` | Prefix for request URL/copy links |
+| `schemaHeadline` | `./resources/api-docs/api-docs.json` | Headline label over title |
+| `enableRequestEmulator` | `true` | Enables right-sidebar endpoint request card |
+| `requestTimeoutMs` | `0` | Browser request timeout in ms (`0` disables timeout) |
+
+Request emulator behavior:
+
+- Endpoint selection: right sidebar shows request builder + send action.
+- Schema selection: right sidebar shows schema example panel.
+- Request execution is browser-side (`fetch`) and depends on API CORS policy.
+
 ## Library Build Config
 
 - `vite.lib.config.ts`: library bundle config (ESM + CJS)

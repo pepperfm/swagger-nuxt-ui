@@ -7,6 +7,7 @@ Repository roles:
 - Demo app: loads local schema from `resources/api-docs/api-docs.json` through `GET /api/swagger-ui` (alias `GET /api/swagger`).
 - Library package: exports `SwaggerViewer`, reusable cards/navigation components, and typed composables.
 - Laravel bridge package: serves zero-config viewer page at `GET /swagger-ui` and JSON at `GET /api/swagger-ui`.
+- Endpoint request emulator: Swagger-like right sidebar for sending endpoint requests directly from docs UI.
 
 ## Quick Start (Demo App)
 
@@ -89,7 +90,12 @@ import '@pepper_fm/swagger-nuxt-ui/styles.css'
 </script>
 
 <template>
-  <SwaggerViewer schema-source="/api/swagger-ui" base-api-url="/api" />
+  <SwaggerViewer
+    schema-source="/api/swagger-ui"
+    base-api-url="/api"
+    :enable-request-emulator="true"
+    :request-timeout-ms="15000"
+  />
 </template>
 ```
 

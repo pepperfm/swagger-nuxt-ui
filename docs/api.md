@@ -78,6 +78,7 @@ Entry: `@pepper_fm/swagger-nuxt-ui`
 
 - `SwaggerViewer`
 - `ContentNavigation`
+- `EndpointRequestCard`
 - `RequestParametersList`
 - `RequestBodyCard`
 - `ResponseExampleCard`
@@ -85,7 +86,13 @@ Entry: `@pepper_fm/swagger-nuxt-ui`
 - `useSwaggerSchema`
 - `useSwaggerNavigation`
 - `useSelectedOperation`
+- `useRequestEmulator`
 - `generateExampleFromSchema`
+- `interpolatePathParams`
+- `serializeQueryParams`
+- `buildRequestUrl`
+- `applySecurityHeader`
+- `buildCurlCommand`
 - `createSwaggerUiPlugin`
 - OpenAPI types from `lib/types.ts`
 
@@ -102,6 +109,8 @@ Props:
 - `schemaHeadline?: string`
 - `titleFallback?: string`
 - `descriptionFallback?: string`
+- `enableRequestEmulator?: boolean` (default `true`)
+- `requestTimeoutMs?: number` (default `0`, timeout disabled)
 
 Events:
 
@@ -124,6 +133,17 @@ Events:
 
 - Maintains selected endpoint/schema item.
 - Resolves request params, security, and request body schema.
+
+### `useRequestEmulator(options)`
+
+- Builds editable request state for selected endpoint (path/query/header/cookie + auth + body).
+- Validates required inputs and JSON body shape before send.
+- Executes browser-side `fetch` request and exposes response state.
+
+Notes:
+
+- Execution is client-side and subject to CORS policy of target API.
+- Timeout handling is optional (`requestTimeoutMs`), disabled by default.
 
 ## See Also
 

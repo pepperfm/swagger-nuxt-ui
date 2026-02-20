@@ -31,8 +31,8 @@ app/
 lib/
 ├── index.ts                       # Public package API
 ├── types.ts                       # Public OpenAPI contracts
-├── components/                    # Library-owned UI components
-├── composables/                   # Library-owned composables
+├── components/                    # Library-owned UI components (SwaggerViewer, EndpointRequestCard, cards/navigation)
+├── composables/                   # Library-owned composables (schema/navigation/selection/request emulator)
 └── styles/swagger-ui.css          # Library stylesheet
 
 bridge-viewer/
@@ -85,6 +85,8 @@ docs/
 | `vite.lib.config.ts` | Library bundle configuration |
 | `vite.viewer.config.ts` | Standalone viewer bundle configuration |
 | `lib/index.ts` | Library public API exports |
+| `lib/components/EndpointRequestCard.vue` | Endpoint request emulator UI (right sidebar) |
+| `lib/composables/useRequestEmulator.ts` | Request state, validation, and execution flow |
 | `bridge-viewer/main.ts` | Browser entry used by Laravel bridge page |
 | `packages/laravel-bridge/routes/swagger-ui.php` | Bridge route registration for JSON + page + assets |
 | `packages/laravel-bridge/src/Http/Controllers/SwaggerViewerPageController.php` | Renders `/swagger-ui` page |
