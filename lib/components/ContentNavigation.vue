@@ -92,20 +92,22 @@ const filteredSchemaItems = computed(() => {
         label="SCHEMAS"
         type="dashed"
       />
-      <UInput
-        v-model="schemaSearchQuery"
-        icon="i-lucide-search"
-        size="sm"
-        placeholder="Filter schemas..."
-        autocomplete="off"
-        name="swagger-schema-filter"
-        autocapitalize="off"
-        autocorrect="off"
-        :spellcheck="false"
-        data-lpignore="true"
-        data-1p-ignore="true"
-        class="mt-2"
-      />
+      <div class="mt-2 px-4">
+        <UInput
+          v-model="schemaSearchQuery"
+          icon="i-lucide-search"
+          size="sm"
+          placeholder="Filter schemas..."
+          autocomplete="off"
+          name="swagger-schema-filter"
+          autocapitalize="off"
+          autocorrect="off"
+          :spellcheck="false"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          class="w-full"
+        />
+      </div>
       <ul class="pl-4 space-y-3 mt-2">
         <li
           v-for="child in filteredSchemaItems"
