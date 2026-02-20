@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { SwaggerSchemaLoadError } from '../composables/useSwaggerSchema'
 import type { HttpMethod, IApiSpec, OpenApiComponents, OpenApiSecurityScheme } from '../types'
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { resolveAnchorFromLocation } from '../composables/navigationAnchor'
 import { generateExampleFromSchema } from '../composables/schemaExample'
 import { useCopy } from '../composables/useCopy'
 import { useSelectedOperation } from '../composables/useSelectedOperation'
@@ -48,16 +49,19 @@ const {
   loadError,
 } = useSwaggerSchema({ defaultSource: props.schemaSource })
 
-const { endpointNavigation, schemaNavigation } = useSwaggerNavigation(schema)
+const { endpointNavigation, schemaNavigation, navigationIndex } = useSwaggerNavigation(schema)
 
 const {
   selectedItem,
+  selectedAnchor,
   onSelect,
+  selectByAnchor,
+  clearSelection,
   getMethodConfig,
   getParameters,
   getRequestBodySchema,
   getSecurity,
-} = useSelectedOperation({ schema, endpointNavigation })
+} = useSelectedOperation({ schema, navigationIndex })
 
 const normalizedBaseApiUrl = computed(() => props.baseApiUrl.replace(/\/+$/, ''))
 const title = computed(() => schema.value?.info?.title ?? props.titleFallback)
@@ -113,6 +117,8 @@ const selectedEndpoint = computed(() => {
   return selectedItem.value
 })
 
+const SELECTION_QUERY_KEYS = ['anchor', 'operation', 'schema']
+
 const example = computed(() => {
   if (!selectedItem.value || selectedItem.value.type !== 'schema') {
     return null
@@ -135,15 +141,86 @@ async function initializeSchema() {
   if (schema.value) {
     emit('schemaLoaded', schema.value)
   }
+
+  applySelectionFromLocation('init')
 }
 
-function copyUrl() {
+function copyEndpointUrl() {
   if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
     return
   }
 
   const url = `${normalizedBaseApiUrl.value}${selectedItem.value.url}`
   copyContent(url)
+}
+
+function replaceLocationSelectionAnchor(anchor: string | null) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const url = new URL(window.location.href)
+  SELECTION_QUERY_KEYS.forEach((key) => {
+    url.searchParams.delete(key)
+  })
+
+  if (anchor) {
+    url.hash = anchor
+  } else {
+    url.hash = ''
+  }
+
+  const nextRelative = `${url.pathname}${url.search}${url.hash}`
+  const currentRelative = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  if (nextRelative === currentRelative) {
+    return
+  }
+
+  window.history.replaceState(window.history.state, '', nextRelative)
+}
+
+function copySelectionLink() {
+  if (!selectedAnchor.value) {
+    return
+  }
+
+  if (typeof window === 'undefined') {
+    copyContent(`#${selectedAnchor.value}`)
+    return
+  }
+
+  const url = new URL(window.location.href)
+  SELECTION_QUERY_KEYS.forEach((key) => {
+    url.searchParams.delete(key)
+  })
+  url.hash = selectedAnchor.value
+  copyContent(url.toString())
+}
+
+function applySelectionFromLocation(source: 'init' | 'navigation') {
+  if (typeof window === 'undefined' || !schema.value) {
+    return
+  }
+
+  const anchorCandidate = resolveAnchorFromLocation(window.location)
+  if (!anchorCandidate) {
+    clearSelection()
+    return
+  }
+
+  const resolved = selectByAnchor(anchorCandidate)
+  if (!resolved) {
+    console.warn('[SwaggerViewer] URL anchor could not be resolved', { anchor: anchorCandidate, source })
+    clearSelection()
+    replaceLocationSelectionAnchor(null)
+    return
+  }
+
+  replaceLocationSelectionAnchor(selectedAnchor.value)
+}
+
+function handleBrowserLocationChange() {
+  applySelectionFromLocation('navigation')
 }
 
 function badgeColor(method: HttpMethod): 'primary' | 'secondary' | 'warning' | 'error' | 'info' {
@@ -163,7 +240,25 @@ function badgeColor(method: HttpMethod): 'primary' | 'secondary' | 'warning' | '
 }
 
 onMounted(async () => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('hashchange', handleBrowserLocationChange)
+    window.addEventListener('popstate', handleBrowserLocationChange)
+  }
+
   await initializeSchema()
+})
+
+onBeforeUnmount(() => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.removeEventListener('hashchange', handleBrowserLocationChange)
+  window.removeEventListener('popstate', handleBrowserLocationChange)
+})
+
+watch(selectedAnchor, (anchor) => {
+  replaceLocationSelectionAnchor(anchor)
 })
 </script>
 
@@ -223,23 +318,43 @@ onMounted(async () => {
             <template #header>
               <div
                 v-if="selectedItem.type === 'endpoint'"
-                class="flex items-center justify-between"
+                class="flex items-center justify-between gap-2"
               >
                 <UBadge :color="badgeColor(selectedItem.method)">
                   {{ selectedItem.method.toUpperCase() }}
                 </UBadge>
-                <code
-                  class="text-sm font-mono text-muted-foreground cursor-pointer"
-                  @click="copyUrl"
-                >
-                  {{ normalizedBaseApiUrl }}{{ selectedItem.url }}
-                </code>
+                <div class="flex items-center gap-2">
+                  <code
+                    class="text-sm font-mono text-muted-foreground cursor-pointer"
+                    @click="copyEndpointUrl"
+                  >
+                    {{ normalizedBaseApiUrl }}{{ selectedItem.url }}
+                  </code>
+                  <UButton
+                    size="xs"
+                    variant="soft"
+                    color="neutral"
+                    icon="i-lucide-link"
+                    @click="copySelectionLink"
+                  >
+                    Copy Link
+                  </UButton>
+                </div>
               </div>
               <div
                 v-else-if="selectedItem.type === 'schema'"
-                class="text-sm font-semibold text-primary"
+                class="flex items-center justify-between gap-2"
               >
-                <code class="font-mono text-xl">{{ selectedItem.name }}</code>
+                <code class="font-mono text-xl text-primary">{{ selectedItem.name }}</code>
+                <UButton
+                  size="xs"
+                  variant="soft"
+                  color="neutral"
+                  icon="i-lucide-link"
+                  @click="copySelectionLink"
+                >
+                  Copy Link
+                </UButton>
               </div>
             </template>
 

@@ -5,8 +5,14 @@ import type {
   IMethod,
   INavigationGroup,
   INavigationItem,
+  NavigationIndex,
 } from '../types'
 import { computed } from 'vue'
+import {
+  buildEndpointAnchor,
+  buildSchemaAnchor,
+  normalizeNavigationAnchor,
+} from './navigationAnchor'
 
 const HTTP_METHODS: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete']
 
@@ -17,9 +23,19 @@ function isHttpMethod(method: string): method is HttpMethod {
 export function useSwaggerNavigation(schema: Ref<IApiSpec | null>): {
   endpointNavigation: ComputedRef<INavigationGroup[]>
   schemaNavigation: ComputedRef<INavigationGroup>
+  navigationIndex: ComputedRef<NavigationIndex>
 } {
-  const endpointNavigation = computed<INavigationGroup[]>(() => {
+  const navigationModel = computed<{
+    endpointNavigation: INavigationGroup[]
+    schemaNavigation: INavigationGroup
+    navigationIndex: NavigationIndex
+  }>(() => {
     const groups: Record<string, INavigationGroup> = {}
+    const navigationIndex: NavigationIndex = {
+      byAnchor: {},
+      byOperationId: {},
+      bySchemaName: {},
+    }
     const paths = schema.value?.paths ?? {}
 
     Object.entries(paths).forEach(([url, methods]) => {
@@ -44,8 +60,10 @@ export function useSwaggerNavigation(schema: Ref<IApiSpec | null>): {
           }
         }
 
+        const anchor = buildEndpointAnchor(tag, typedConfig.operationId)
         const item: INavigationItem = {
-          _path: `#${method}-${url}`,
+          _path: `#${anchor}`,
+          anchor,
           title: typedConfig.summary || 'No title provided',
           description: typedConfig.description ?? undefined,
           method,
@@ -53,29 +71,56 @@ export function useSwaggerNavigation(schema: Ref<IApiSpec | null>): {
         }
 
         groups[tag].children.push(item)
+
+        const normalizedAnchor = normalizeNavigationAnchor(anchor)
+        if (normalizedAnchor) {
+          navigationIndex.byAnchor[normalizedAnchor] = item
+          navigationIndex.byAnchor[normalizedAnchor.toLowerCase()] = item
+        }
+
+        navigationIndex.byOperationId[typedConfig.operationId] = item
+        navigationIndex.byOperationId[typedConfig.operationId.toLowerCase()] = item
       })
     })
 
-    return Object.values(groups)
-  })
-
-  const schemaNavigation = computed<INavigationGroup>(() => {
     const schemas = schema.value?.components?.schemas ?? {}
-
-    return {
+    const schemaNavigation: INavigationGroup = {
       _path: '#schemas',
       title: 'Schemas',
       children: Object.keys(schemas).map(name => ({
-        _path: `#schema-${name}`,
+        _path: `#${buildSchemaAnchor(name)}`,
+        anchor: buildSchemaAnchor(name),
         title: name,
         method: '',
         operationId: `schema-${name}`,
       })),
     }
+
+    schemaNavigation.children.forEach((item) => {
+      const normalizedAnchor = normalizeNavigationAnchor(item.anchor)
+      if (normalizedAnchor) {
+        navigationIndex.byAnchor[normalizedAnchor] = item
+        navigationIndex.byAnchor[normalizedAnchor.toLowerCase()] = item
+      }
+
+      navigationIndex.bySchemaName[item.title] = item
+      navigationIndex.bySchemaName[item.title.toLowerCase()] = item
+    })
+
+    return {
+      endpointNavigation: Object.values(groups),
+      schemaNavigation,
+      navigationIndex,
+    }
   })
+
+  const endpointNavigation = computed(() => navigationModel.value.endpointNavigation)
+  const schemaNavigation = computed(() => navigationModel.value.schemaNavigation)
+  const navigationIndex = computed(() => navigationModel.value.navigationIndex)
 
   return {
     endpointNavigation,
     schemaNavigation,
+    navigationIndex,
   }
 }

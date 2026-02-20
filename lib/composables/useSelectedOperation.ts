@@ -4,14 +4,25 @@ import type {
   HttpMethod,
   IApiSpec,
   IMethod,
-  INavigationGroup,
   INavigationItem,
   IParameter,
+  NavigationIndex,
   OpenApiSchemaObject,
   SchemaSelection,
   SelectedItem,
 } from '../types'
-import { ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import {
+  extractOperationIdFromAnchor,
+  extractSchemaNameFromAnchor,
+  normalizeNavigationAnchor,
+} from './navigationAnchor'
+
+const HTTP_METHODS: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete']
+
+function isHttpMethod(method: string): method is HttpMethod {
+  return HTTP_METHODS.includes(method as HttpMethod)
+}
 
 function resolveSchemaRef(schema: IApiSpec | null, node: OpenApiSchemaObject | undefined): OpenApiSchemaObject | undefined {
   if (!node?.$ref) {
@@ -48,49 +59,91 @@ function getMethodConfigByOperationId(paths: IApiSpec['paths'] | undefined, oper
   return undefined
 }
 
+function readIndexedNavigationItem(
+  index: Record<string, INavigationItem>,
+  key: string | null,
+): INavigationItem | null {
+  if (!key) {
+    return null
+  }
+
+  return index[key] ?? index[key.toLowerCase()] ?? null
+}
+
+function getEndpointRecordByOperationId(
+  paths: IApiSpec['paths'] | undefined,
+  operationId: string,
+): {
+  url: string
+  method: HttpMethod
+  config: IMethod
+} | null {
+  if (!paths) {
+    return null
+  }
+
+  for (const [url, methods] of Object.entries(paths)) {
+    for (const [method, config] of Object.entries(methods ?? {})) {
+      if (!isHttpMethod(method)) {
+        continue
+      }
+
+      if (!config?.operationId || config.operationId !== operationId) {
+        continue
+      }
+
+      return {
+        url,
+        method: method as HttpMethod,
+        config,
+      }
+    }
+  }
+
+  return null
+}
+
 export function useSelectedOperation(options: {
   schema: Ref<IApiSpec | null>
-  endpointNavigation: ComputedRef<INavigationGroup[]>
+  navigationIndex: ComputedRef<NavigationIndex>
 }) {
-  const { schema, endpointNavigation } = options
+  const { schema, navigationIndex } = options
 
   const selectedItem = ref<SelectedItem | null>(null)
 
-  function onSelect(item: INavigationItem) {
+  function clearSelection() {
+    selectedItem.value = null
+  }
+
+  function selectNavigationItem(item: INavigationItem): boolean {
     const paths = schema.value?.paths
     const localSchemas = schema.value?.components?.schemas ?? {}
 
     if (item.method) {
-      if (!paths) {
-        console.warn('[useSelectedOperation] Paths are not available for endpoint selection')
-        return
+      const endpointRecord = getEndpointRecordByOperationId(paths, item.operationId)
+      if (!endpointRecord) {
+        console.warn('[useSelectedOperation] Operation not found for selection', { operationId: item.operationId })
+        return false
       }
 
-      for (const [url, methods] of Object.entries(paths)) {
-        const methodConfig = methods?.[item.method as HttpMethod]
-        if (methodConfig?.operationId === item.operationId) {
-          const endpoint: EndpointSelection = {
-            type: 'endpoint',
-            method: item.method,
-            url,
-            summary: methodConfig.summary ?? undefined,
-            description: item.description ?? methodConfig.description ?? undefined,
-            operationId: item.operationId,
-          }
-
-          selectedItem.value = endpoint
-          return
-        }
+      const endpoint: EndpointSelection = {
+        type: 'endpoint',
+        method: endpointRecord.method,
+        url: endpointRecord.url,
+        summary: endpointRecord.config.summary ?? undefined,
+        description: item.description ?? endpointRecord.config.description ?? undefined,
+        operationId: item.operationId,
+        anchor: item.anchor,
       }
 
-      console.warn('[useSelectedOperation] Operation not found for selection', { operationId: item.operationId })
-      return
+      selectedItem.value = endpoint
+      return true
     }
 
     const currentSchema = localSchemas[item.title]
     if (!currentSchema) {
       console.warn('[useSelectedOperation] Schema not found for selection', { schema: item.title })
-      return
+      return false
     }
 
     const schemaSelection: SchemaSelection = {
@@ -98,9 +151,41 @@ export function useSelectedOperation(options: {
       name: item.title,
       schema: currentSchema,
       operationId: item.operationId,
+      anchor: item.anchor,
     }
 
     selectedItem.value = schemaSelection
+    return true
+  }
+
+  function onSelect(item: INavigationItem) {
+    selectNavigationItem(item)
+  }
+
+  function selectByAnchor(anchor: string): boolean {
+    const normalizedAnchor = normalizeNavigationAnchor(anchor)
+    if (!normalizedAnchor) {
+      return false
+    }
+
+    const byAnchor = readIndexedNavigationItem(navigationIndex.value.byAnchor, normalizedAnchor)
+    if (byAnchor) {
+      return selectNavigationItem(byAnchor)
+    }
+
+    const schemaName = extractSchemaNameFromAnchor(normalizedAnchor)
+    const bySchemaName = readIndexedNavigationItem(navigationIndex.value.bySchemaName, schemaName)
+    if (bySchemaName) {
+      return selectNavigationItem(bySchemaName)
+    }
+
+    const operationId = extractOperationIdFromAnchor(normalizedAnchor)
+    const byOperationId = readIndexedNavigationItem(navigationIndex.value.byOperationId, operationId)
+    if (byOperationId) {
+      return selectNavigationItem(byOperationId)
+    }
+
+    return false
   }
 
   function getMethodConfig(operationId: string): IMethod | undefined {
@@ -160,20 +245,14 @@ export function useSelectedOperation(options: {
     return Object.keys(firstSecurity)[0] || null
   }
 
-  watch(endpointNavigation, (groups) => {
-    if (selectedItem.value || !groups.length) {
-      return
-    }
-
-    const firstOperation = groups[0]?.children?.[0]
-    if (firstOperation) {
-      onSelect(firstOperation)
-    }
-  }, { immediate: true })
+  const selectedAnchor = computed(() => selectedItem.value?.anchor ?? null)
 
   return {
     selectedItem,
+    selectedAnchor,
     onSelect,
+    selectByAnchor,
+    clearSelection,
     getMethodConfig,
     getParameters,
     getRequestBodySchema,

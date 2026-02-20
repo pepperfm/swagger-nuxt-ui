@@ -90,6 +90,7 @@ docs/
 | `lib/components/RequestBodyFormFields.vue` | Typed field renderer for request body form mode |
 | `lib/components/ParameterInputField.vue` | Typed parameter input renderer (Nuxt UI control mapping) |
 | `lib/composables/useRequestEmulator.ts` | Request state, validation, and execution flow |
+| `lib/composables/navigationAnchor.ts` | Canonical anchor model + URL/hash/query deep-link parsing helpers |
 | `lib/composables/requestBodyInputResolver.ts` | OpenAPI requestBody schema -> form input map resolver |
 | `lib/composables/requestBodyFormState.ts` | Request body form state init/hydration/serialization helpers |
 | `lib/composables/requestParameterInputResolver.ts` | OpenAPI parameter schema -> input control/value resolver |

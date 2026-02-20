@@ -14,6 +14,14 @@ export { default as SchemaDetailCard } from './components/SchemaDetailCard.vue'
 export { default as SwaggerViewer } from './components/SwaggerViewer.vue'
 
 export {
+  buildEndpointAnchor,
+  buildSchemaAnchor,
+  extractOperationIdFromAnchor,
+  extractSchemaNameFromAnchor,
+  normalizeNavigationAnchor,
+  resolveAnchorFromLocation,
+} from './composables/navigationAnchor'
+export {
   buildRequestBodyFromFormValues,
   createInitialRequestBodyFormValues,
   hydrateRequestBodyFormValues,
@@ -47,6 +55,7 @@ export type {
   INavigationGroup,
   INavigationItem,
   IParameter,
+  NavigationIndex,
   OpenApiComponents,
   OpenApiParameterLocation,
   OpenApiSchemaObject,

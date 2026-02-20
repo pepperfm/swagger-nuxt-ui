@@ -149,6 +149,7 @@ export interface RequestEmulatorExecutionState {
 
 export interface INavigationItem {
   _path: string
+  anchor: string
   title: string
   description?: string
   method: NavigationMethod
@@ -159,6 +160,12 @@ export interface INavigationGroup {
   _path: string
   title: string
   children: INavigationItem[]
+}
+
+export interface NavigationIndex {
+  byAnchor: Record<string, INavigationItem>
+  byOperationId: Record<string, INavigationItem>
+  bySchemaName: Record<string, INavigationItem>
 }
 
 export interface IParameter {
@@ -226,6 +233,7 @@ export interface EndpointSelection {
   summary?: string
   description?: string
   operationId: string
+  anchor: string
 }
 
 export interface SchemaSelection {
@@ -233,6 +241,7 @@ export interface SchemaSelection {
   name: string
   schema: OpenApiSchemaObject
   operationId: string
+  anchor: string
 }
 
 export type SelectedItem = EndpointSelection | SchemaSelection

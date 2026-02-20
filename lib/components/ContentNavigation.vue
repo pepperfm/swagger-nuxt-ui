@@ -62,7 +62,8 @@ const filteredSchemaItems = computed(() => {
               v-for="child in item.children ?? []"
               :key="child._path"
             >
-              <button
+              <a
+                :href="`#${child.anchor}`"
                 class="group flex items-center justify-between w-full cursor-pointer text-left text-sm focus:outline-none px-2 py-1 rounded-lg transition-colors text-primary"
                 :class="[
                   props.selectedOperationId === child.operationId
@@ -79,7 +80,7 @@ const filteredSchemaItems = computed(() => {
                 >
                   {{ child.method }}
                 </UBadge>
-              </button>
+              </a>
             </li>
           </ul>
         </template>
@@ -110,7 +111,8 @@ const filteredSchemaItems = computed(() => {
           v-for="child in filteredSchemaItems"
           :key="child._path"
         >
-          <button
+          <a
+            :href="`#${child.anchor}`"
             class="group flex items-center justify-between w-full cursor-pointer text-left text-sm focus:outline-none px-2 py-1 rounded-lg transition-colors text-primary"
             :class="[
               props.selectedOperationId === child.operationId
@@ -120,7 +122,7 @@ const filteredSchemaItems = computed(() => {
             @click="$emit('select', child)"
           >
             <span>{{ child.title }}</span>
-          </button>
+          </a>
         </li>
       </ul>
       <p
