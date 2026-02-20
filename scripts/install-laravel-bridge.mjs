@@ -38,6 +38,43 @@ function hasBridgeInComposer(projectRoot, packageName) {
   }
 }
 
+/**
+ * @param {string} projectRoot
+ * @param {string} packageName
+ */
+function hasPathRepositoryForPackage(projectRoot, packageName) {
+  const composer = readComposerJson(projectRoot)
+  if (!composer) {
+    return false
+  }
+
+  const repositories = composer.data.repositories
+  const repositoryKey = `${packageName.replaceAll('/', '-')}-local`
+
+  /**
+   * @param {unknown} candidate
+   */
+  const isPathRepository = (candidate) => {
+    return Boolean(candidate)
+      && typeof candidate === 'object'
+      && candidate.type === 'path'
+  }
+
+  if (Array.isArray(repositories)) {
+    return repositories.some(isPathRepository)
+  }
+
+  if (!repositories || typeof repositories !== 'object') {
+    return false
+  }
+
+  if (isPathRepository(repositories[repositoryKey])) {
+    return true
+  }
+
+  return Object.values(repositories).some(isPathRepository)
+}
+
 function resolveComposerCommand() {
   return process.platform === 'win32' ? 'composer.bat' : 'composer'
 }
@@ -211,6 +248,7 @@ export async function installLaravelBridge(options = {}) {
   }
 
   const installedInComposer = hasBridgeInComposer(projectRoot, packageName)
+  const hasPathRepositoryConfigured = hasPathRepositoryForPackage(projectRoot, packageName)
 
   if (localPath) {
     const validation = validateBridgePackagePath(localPath, packageName)
@@ -230,8 +268,6 @@ export async function installLaravelBridge(options = {}) {
     }
 
     console.info('[swagger-ui] Local composer path repository configured for Laravel bridge')
-  } else if (installedInComposer) {
-    return { ok: true, skipped: true }
   }
 
   const composerCommand = resolveComposerCommand()
@@ -239,6 +275,29 @@ export async function installLaravelBridge(options = {}) {
   if (!composerCheck.ok) {
     console.warn('[swagger-ui] WARN composer is unavailable, Laravel bridge was not installed')
     return { ok: !forceFailureOnError, skipped: true, reason: 'composer_unavailable' }
+  }
+
+  if (installedInComposer && !localPath) {
+    if (!hasPathRepositoryConfigured) {
+      return { ok: true, skipped: true }
+    }
+
+    const refreshResult = await runCommand(
+      composerCommand,
+      ['reinstall', packageName, '--no-interaction', '--no-ansi'],
+      { cwd: projectRoot },
+    )
+
+    if (!refreshResult.ok) {
+      console.error('[swagger-ui] ERROR Failed to refresh Laravel bridge package from path repository')
+      printComposerDiagnostics(refreshResult.stderr, {
+        packageName,
+      })
+      return { ok: !forceFailureOnError, skipped: true, reason: 'composer_refresh_failed' }
+    }
+
+    console.info('[swagger-ui] Laravel bridge refreshed from composer path repository')
+    return { ok: true, installed: true, refreshed: true }
   }
 
   const versionConstraint = options.versionConstraint

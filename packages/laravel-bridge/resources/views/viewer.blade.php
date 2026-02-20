@@ -11,6 +11,7 @@
 <div id="swagger-ui-bridge-viewer" class="isolate"></div>
 <script>
 window.__SWAGGER_UI_BRIDGE__ = {{ \Illuminate\Support\Js::from([
+    'title' => $title,
     'schemaSource' => $schemaSource,
     'schemaHeadline' => $schemaHeadline,
     'baseApiUrl' => $baseApiUrl,

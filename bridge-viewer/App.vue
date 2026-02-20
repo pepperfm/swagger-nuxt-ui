@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { SwaggerViewer } from '../lib'
 
 interface BridgeViewerConfig {
+  title?: string
   schemaSource?: string
   schemaHeadline?: string
   baseApiUrl?: string
@@ -16,6 +17,11 @@ declare global {
 }
 
 const runtimeConfig = window.__SWAGGER_UI_BRIDGE__ ?? {}
+
+const title = computed(() => {
+  const raw = typeof runtimeConfig.title === 'string' ? runtimeConfig.title.trim() : ''
+  return raw === '' ? 'API Documentation' : raw
+})
 
 const schemaSource = computed(() => {
   const source = typeof runtimeConfig.schemaSource === 'string' ? runtimeConfig.schemaSource.trim() : ''
@@ -56,7 +62,13 @@ function handleSchemaLoaded() {
 
 <template>
   <UApp>
-    <main class="isolate">
+    <UHeader :title="title">
+      <template #right>
+        <UColorModeButton />
+      </template>
+    </UHeader>
+
+    <UMain>
       <UContainer class="py-6 lg:py-10">
         <UAlert
           v-if="fatalErrorMessage"
@@ -75,6 +87,20 @@ function handleSchemaLoaded() {
           @schema-loaded="handleSchemaLoaded"
         />
       </UContainer>
-    </main>
+    </UMain>
+
+    <USeparator />
+
+    <UFooter>
+      <template #left>
+        <p class="text-sm text-muted">
+          Copyright &copy; {{ new Date().getFullYear() }}
+        </p>
+      </template>
+
+      <template #right>
+        <UColorModeButton />
+      </template>
+    </UFooter>
   </UApp>
 </template>

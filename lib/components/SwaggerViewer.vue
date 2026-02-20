@@ -157,11 +157,8 @@ onMounted(async () => {
 <template>
   <div class="swagger-ui-viewer">
     <UPage>
-      <template
-        v-if="schema && !isLoading"
-        #left
-      >
-        <UPageAside>
+      <template #left>
+        <UPageAside v-if="schema && !isLoading">
           <ContentNavigation
             :navigation="endpointNavigation"
             :schemas="schemaNavigation"
@@ -314,22 +311,14 @@ onMounted(async () => {
         </UPageBody>
       </template>
 
-      <template
-        v-if="schema && !isLoading"
-        #right
-      >
-        <UPageAside>
-          <div class="max-w-6xl w-full">
-            <h1
-              v-if="selectedItem?.type === 'schema'"
-              class="text-3xl font-bold"
-            >
-              <pre
-                class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
-                title="Click to copy example"
-                @click="copyContent(JSON.stringify(example, null, 2))"
-              >{{ JSON.stringify(example, null, 2) }}</pre>
-            </h1>
+      <template #right>
+        <UPageAside v-if="schema && !isLoading && selectedItem?.type === 'schema'">
+          <div class="w-full">
+            <pre
+              class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
+              title="Click to copy example"
+              @click="copyContent(JSON.stringify(example, null, 2))"
+            >{{ JSON.stringify(example, null, 2) }}</pre>
           </div>
         </UPageAside>
       </template>
