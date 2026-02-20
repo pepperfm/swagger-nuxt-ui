@@ -29,7 +29,6 @@ const {
   requestBodyText,
   requestBodyContentType,
   groupedInputs,
-  preparedRequest,
   validationErrors,
   isRequestValid,
   responseState,
@@ -50,6 +49,7 @@ const headersCount = computed(() => {
   if (!responseState.value.result) {
     return 0
   }
+
   return Object.keys(responseState.value.result.headers).length
 })
 
@@ -61,6 +61,34 @@ const sortedResponseHeaders = computed(() => {
   return Object.entries(responseState.value.result.headers).sort(([left], [right]) => {
     return left.localeCompare(right)
   })
+})
+
+function formatResponseSize(value: unknown): string {
+  if (typeof value !== 'string') {
+    console.warn('[EndpointRequestCard] Invalid response body for size formatting', { valueType: typeof value })
+    return '0 B'
+  }
+
+  const bytes = new TextEncoder().encode(value).length
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  const kilobytes = bytes / 1024
+  if (kilobytes < 1024) {
+    return `${kilobytes.toFixed(1)} KB`
+  }
+
+  const megabytes = kilobytes / 1024
+  return `${megabytes.toFixed(1)} MB`
+}
+
+const responseSizeLabel = computed(() => {
+  if (!responseState.value.result) {
+    return '0 B'
+  }
+
+  return formatResponseSize(responseState.value.result.bodyText)
 })
 
 const validationByField = computed(() => {
@@ -119,158 +147,166 @@ async function onSendClick() {
         </div>
       </template>
 
-      <div class="space-y-3">
-        <div
-          v-if="props.securityKey && props.securityScheme"
-          class="space-y-2"
-        >
-          <USeparator label="AUTH" />
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-muted">
-              {{ props.securityKey }}
-            </span>
-            <UBadge
-              size="sm"
-              variant="soft"
-              color="info"
+      <UScrollArea class="max-h-[56vh] pr-2">
+        <div class="space-y-3 pe-1">
+          <div
+            v-if="props.securityKey && props.securityScheme"
+            class="space-y-2"
+          >
+            <USeparator label="AUTH" />
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-muted">
+                {{ props.securityKey }}
+              </span>
+              <UBadge
+                size="sm"
+                variant="soft"
+                color="info"
+              >
+                {{ props.securityScheme.type }}
+              </UBadge>
+            </div>
+            <UFormField
+              label="Token"
+              :error="errorForField('auth')"
             >
-              {{ props.securityScheme.type }}
-            </UBadge>
+              <UInput
+                v-model="auth.token"
+                type="password"
+                autocomplete="off"
+                placeholder="Paste access token"
+                icon="i-lucide-key-round"
+              />
+            </UFormField>
           </div>
-          <UFormField
-            label="Token"
-            :error="errorForField('auth')"
-          >
-            <UInput
-              v-model="auth.token"
-              type="password"
-              autocomplete="off"
-              placeholder="Paste access token"
-              icon="i-lucide-key-round"
-            />
-          </UFormField>
-        </div>
 
-        <div
-          v-if="groupedInputs.path.length"
-          class="space-y-2"
-        >
-          <USeparator label="PATH" />
-          <UFormField
-            v-for="input in groupedInputs.path"
-            :key="input.key"
-            :label="input.name"
-            :description="input.description || undefined"
-            :error="errorForField(input.key)"
+          <div
+            v-if="groupedInputs.path.length"
+            class="space-y-2"
           >
-            <UInput
-              v-model="input.value"
-              :placeholder="input.type"
-            />
-          </UFormField>
-        </div>
-
-        <div
-          v-if="groupedInputs.query.length"
-          class="space-y-2"
-        >
-          <USeparator label="QUERY" />
-          <UFormField
-            v-for="input in groupedInputs.query"
-            :key="input.key"
-            :label="input.name"
-            :description="input.description || undefined"
-            :error="errorForField(input.key)"
-          >
-            <UInput
-              v-model="input.value"
-              :placeholder="input.type"
-            />
-          </UFormField>
-        </div>
-
-        <div
-          v-if="groupedInputs.header.length"
-          class="space-y-2"
-        >
-          <USeparator label="HEADERS" />
-          <UFormField
-            v-for="input in groupedInputs.header"
-            :key="input.key"
-            :label="input.name"
-            :description="input.description || undefined"
-            :error="errorForField(input.key)"
-          >
-            <UInput
-              v-model="input.value"
-              :placeholder="input.type"
-            />
-          </UFormField>
-        </div>
-
-        <div
-          v-if="groupedInputs.cookie.length"
-          class="space-y-2"
-        >
-          <USeparator label="COOKIES" />
-          <UFormField
-            v-for="input in groupedInputs.cookie"
-            :key="input.key"
-            :label="input.name"
-            :description="input.description || undefined"
-            :error="errorForField(input.key)"
-          >
-            <UInput
-              v-model="input.value"
-              :placeholder="input.type"
-            />
-          </UFormField>
-        </div>
-
-        <div
-          v-if="hasRequestBody"
-          class="space-y-2"
-        >
-          <USeparator label="BODY" />
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-muted">Content-Type</span>
-            <UBadge
-              size="sm"
-              variant="soft"
-              color="info"
+            <USeparator label="PATH" />
+            <UFormField
+              v-for="input in groupedInputs.path"
+              :key="input.key"
+              :label="input.name"
+              :help="input.description || undefined"
+              :error="errorForField(input.key)"
             >
-              {{ requestBodyContentType || 'application/json' }}
-            </UBadge>
+              <UInput
+                v-model="input.value"
+                :placeholder="input.type"
+              />
+            </UFormField>
           </div>
-          <UFormField :error="errorForField('body')">
-            <UTextarea
-              v-model="requestBodyText"
-              :rows="10"
-              autoresize
-              :maxrows="16"
-              class="font-mono text-xs w-full"
-            />
-          </UFormField>
-        </div>
 
-        <div
-          v-if="validationErrors.length"
-          role="alert"
-          aria-live="polite"
-        >
-          <UAlert
-            title="Request has validation errors"
-            color="warning"
-            variant="soft"
-            :description="validationErrors[0]?.message"
-          />
+          <div
+            v-if="groupedInputs.query.length"
+            class="space-y-2"
+          >
+            <USeparator label="QUERY" />
+            <UFormField
+              v-for="input in groupedInputs.query"
+              :key="input.key"
+              :label="input.name"
+              :help="input.description || undefined"
+              :error="errorForField(input.key)"
+            >
+              <UInput
+                v-model="input.value"
+                :placeholder="input.type"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+
+          <div
+            v-if="groupedInputs.header.length"
+            class="space-y-2"
+          >
+            <USeparator label="HEADERS" />
+            <UFormField
+              v-for="input in groupedInputs.header"
+              :key="input.key"
+              :label="input.name"
+              :help="input.description || undefined"
+              :error="errorForField(input.key)"
+            >
+              <UInput
+                v-model="input.value"
+                :placeholder="input.type"
+              />
+            </UFormField>
+          </div>
+
+          <div
+            v-if="groupedInputs.cookie.length"
+            class="space-y-2"
+          >
+            <USeparator label="COOKIES" />
+            <UFormField
+              v-for="input in groupedInputs.cookie"
+              :key="input.key"
+              :label="input.name"
+              :help="input.description || undefined"
+              :error="errorForField(input.key)"
+            >
+              <UInput
+                v-model="input.value"
+                :placeholder="input.type"
+              />
+            </UFormField>
+          </div>
+
+          <div
+            v-if="hasRequestBody"
+            class="space-y-2"
+          >
+            <USeparator label="BODY" />
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-muted">Content-Type</span>
+              <UBadge
+                size="sm"
+                variant="soft"
+                color="info"
+              >
+                {{ requestBodyContentType || 'application/json' }}
+              </UBadge>
+            </div>
+            <UFormField :error="errorForField('body')">
+              <UScrollArea class="max-h-72 w-full">
+                <UTextarea
+                  v-model="requestBodyText"
+                  :rows="10"
+                  autoresize
+                  :maxrows="40"
+                  class="font-mono text-xs w-full"
+                />
+              </UScrollArea>
+            </UFormField>
+          </div>
+
+          <div
+            v-if="validationErrors.length"
+            role="alert"
+            aria-live="polite"
+          >
+            <UAlert
+              title="Request has validation errors"
+              color="warning"
+              variant="soft"
+              :help="validationErrors[0]?.message"
+            />
+          </div>
         </div>
-      </div>
+      </UScrollArea>
     </UCard>
 
     <USeparator label="RESPONSE" />
 
-    <UCard v-if="responseState.isSending" variant="subtle">
+    <UCard
+      v-if="responseState.isSending"
+      variant="subtle"
+    >
       <div class="flex items-center gap-2 text-sm text-muted">
         <UIcon
           name="i-lucide-loader"
@@ -289,18 +325,22 @@ async function onSendClick() {
         title="Request failed"
         color="error"
         variant="soft"
-        :description="responseState.error.message"
+        :help="responseState.error.message"
       />
     </div>
 
-    <UCard v-else-if="responseState.result" variant="subtle">
+    <UCard
+      v-else-if="responseState.result"
+      variant="subtle"
+    >
       <div class="space-y-3">
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <UBadge :color="responseBadgeColor(responseState.result.status)">
             {{ responseState.result.status }}
           </UBadge>
           <span class="text-sm text-muted">{{ responseState.result.statusText }}</span>
           <span class="text-xs text-muted">{{ responseState.result.elapsedMs }} ms</span>
+          <span class="text-xs text-muted">{{ responseSizeLabel }}</span>
         </div>
 
         <div class="flex items-center justify-between">
@@ -331,11 +371,16 @@ async function onSendClick() {
           <span class="text-xs text-muted">Body</span>
         </div>
 
-        <pre class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-80 bg-muted text-muted-foreground">{{ responseState.result.bodyText || '(empty)' }}</pre>
+        <UScrollArea class="max-h-80 w-full rounded-md border border-default bg-muted/20">
+          <pre class="text-xs font-mono whitespace-pre-wrap break-words p-2 text-muted-foreground">{{ responseState.result.bodyText || '(empty)' }}</pre>
+        </UScrollArea>
       </div>
     </UCard>
 
-    <UCard v-else variant="subtle">
+    <UCard
+      v-else
+      variant="subtle"
+    >
       <p class="text-sm text-muted">
         Send request to see response details.
       </p>
