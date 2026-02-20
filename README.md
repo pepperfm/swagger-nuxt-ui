@@ -17,6 +17,19 @@ bun run dev:app
 
 Open `http://localhost:3000`.
 
+## Known Issues
+
+### Bun lockfile warning on Bun 1.3.9
+
+In this repository, Bun may report a lockfile parse error for transitive Tiptap peers
+(`@tiptap/y-tiptap` -> `y-protocols`), then continue with `warn: Ignoring lockfile`.
+
+Current project workaround:
+
+- Use `bun install` (regular install)
+- Avoid `bun install -f` for this repo
+- If needed: remove `bun.lock` and run `bun install` again
+
 ## Laravel Zero-Config Flow
 
 After installing the npm package in a Laravel host project:
