@@ -634,7 +634,7 @@ watch(selectedAnchor, (anchor) => {
         <UPageAside
           v-if="schema && !isLoading"
           :ui="{
-            root: 'hidden lg:block py-8 lg:ps-4 lg:-ms-4 lg:pe-6.5',
+            root: 'hidden overflow-visible max-h-none static top-auto lg:block lg:overflow-visible lg:max-h-none lg:static lg:top-auto py-8 lg:ps-4 lg:-ms-4 lg:pe-6.5',
           }"
         >
           <EndpointRequestCard
