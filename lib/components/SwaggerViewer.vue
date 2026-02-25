@@ -268,24 +268,6 @@ function replaceLocationSelectionAnchor(anchor: string | null) {
   })
 }
 
-function copySelectionLink() {
-  if (!selectedAnchor.value) {
-    return
-  }
-
-  if (typeof window === 'undefined') {
-    copyContent(`#${selectedAnchor.value}`)
-    return
-  }
-
-  const url = new URL(window.location.href)
-  SELECTION_QUERY_KEYS.forEach((key) => {
-    url.searchParams.delete(key)
-  })
-  url.hash = selectedAnchor.value
-  copyContent(url.toString())
-}
-
 function openAuthorizeModal() {
   isAuthorizeModalOpen.value = true
 }
@@ -544,38 +526,18 @@ watch(selectedAnchor, (anchor) => {
                 <UBadge :color="badgeColor(selectedItem.method)">
                   {{ selectedItem.method.toUpperCase() }}
                 </UBadge>
-                <div class="flex items-center gap-2">
-                  <code
-                    class="text-sm font-mono text-muted-foreground cursor-pointer"
-                    @click="copyEndpointUrl"
-                  >
-                    {{ selectedEndpointDisplayUrl }}
-                  </code>
-                  <UButton
-                    size="xs"
-                    variant="soft"
-                    color="neutral"
-                    icon="i-lucide-link"
-                    @click="copySelectionLink"
-                  >
-                    Copy Link
-                  </UButton>
-                </div>
+                <code
+                  class="text-sm font-mono text-muted-foreground cursor-pointer"
+                  @click="copyEndpointUrl"
+                >
+                  {{ selectedEndpointDisplayUrl }}
+                </code>
               </div>
               <div
                 v-else-if="selectedItem.type === 'schema'"
-                class="flex items-center justify-between gap-2"
+                class="flex items-center"
               >
                 <code class="font-mono text-xl text-primary">{{ selectedItem.name }}</code>
-                <UButton
-                  size="xs"
-                  variant="soft"
-                  color="neutral"
-                  icon="i-lucide-link"
-                  @click="copySelectionLink"
-                >
-                  Copy Link
-                </UButton>
               </div>
             </template>
 

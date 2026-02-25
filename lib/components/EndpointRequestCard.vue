@@ -6,7 +6,7 @@ import type {
   IParameter,
   OpenApiComponents,
 } from '../types'
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRequestEmulator } from '../composables/useRequestEmulator'
 import ParameterInputField from './ParameterInputField.vue'
 import RequestBodyEditor from './RequestBodyEditor.vue'
@@ -111,6 +111,8 @@ const responseSizeLabel = computed(() => {
   return formatResponseSize(responseState.value.result.bodyText)
 })
 
+const responseSectionRef = ref<HTMLElement | null>(null)
+
 const validationByField = computed(() => {
   const map = new Map<string, string>()
   validationErrors.value.forEach((error) => {
@@ -137,6 +139,16 @@ function responseBadgeColor(status: number): 'primary' | 'warning' | 'error' {
 
 async function onSendClick() {
   await sendRequest()
+
+  if (!responseState.value.result && !responseState.value.error) {
+    return
+  }
+
+  await nextTick()
+  responseSectionRef.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
 }
 </script>
 
@@ -290,7 +302,9 @@ async function onSendClick() {
       </div>
     </UCard>
 
-    <USeparator label="RESPONSE" />
+    <div ref="responseSectionRef">
+      <USeparator label="RESPONSE" />
+    </div>
 
     <UCard
       v-if="responseState.isSending"
