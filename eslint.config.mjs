@@ -4,7 +4,7 @@ export default antfu({
   ignores: [
     'example.json',
     'dist/**',
-    'packages/laravel-bridge/resources/assets/**',
+    'packages/l5-swagger-ui-bridge/resources/assets/**',
   ],
   vue: true,
   rules: {

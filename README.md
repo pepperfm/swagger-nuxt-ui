@@ -51,7 +51,7 @@ No host-side Vue/Inertia code is required.
 Use path-repo mode to install bridge from local filesystem:
 
 ```bash
-bunx swagger-ui-bridge-install --path /absolute/path/to/packages/laravel-bridge --constraint @dev
+bunx swagger-ui-bridge-install --path /absolute/path/to/packages/l5-swagger-ui-bridge --constraint @dev
 ```
 
 Optional flags:
@@ -79,7 +79,7 @@ Generated outputs:
 
 - `dist/lib/*` -> npm library bundle
 - `dist/viewer/viewer.js` + `dist/viewer/viewer.css` -> standalone viewer build
-- `packages/laravel-bridge/resources/assets/*` -> bridge-distributed viewer assets
+- `packages/l5-swagger-ui-bridge/resources/assets/*` -> bridge-distributed viewer assets
 
 ## Nuxt/Vue Consumer Example
 

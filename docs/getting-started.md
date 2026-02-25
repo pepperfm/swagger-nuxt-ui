@@ -63,7 +63,7 @@ Expected result:
 ### Local Bridge Development Mode
 
 ```bash
-bunx swagger-ui-bridge-install --path /absolute/path/to/packages/laravel-bridge --constraint @dev
+bunx swagger-ui-bridge-install --path /absolute/path/to/packages/l5-swagger-ui-bridge --constraint @dev
 ```
 
 Useful options:

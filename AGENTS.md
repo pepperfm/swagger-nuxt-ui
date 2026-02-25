@@ -7,7 +7,7 @@ Nuxt 4 + Nuxt UI 4 repository with dual purpose:
 
 - Demo application for browsing local OpenAPI schema.
 - Reusable Vue library package (`@pepper_fm/swagger-nuxt-ui`) sourced from `lib/`.
-- Laravel bridge Composer package (`pepperfm/swagger-ui-laravel-bridge`) sourced from `packages/laravel-bridge`.
+- Laravel bridge Composer package (`pepperfm/swagger-ui-laravel-bridge`) sourced from `packages/l5-swagger-ui-bridge`.
 
 ## Tech Stack
 - **Language:** TypeScript, PHP
@@ -48,7 +48,7 @@ server/
 resources/
 └── api-docs/api-docs.json         # Local OpenAPI source
 
-packages/laravel-bridge/
+packages/l5-swagger-ui-bridge/
 ├── composer.json
 ├── config/swagger-ui-bridge.php
 ├── resources/
@@ -97,9 +97,9 @@ docs/
 | `lib/composables/requestBodyFormState.ts` | Request body form state init/hydration/serialization helpers |
 | `lib/composables/requestParameterInputResolver.ts` | OpenAPI parameter schema -> input control/value resolver |
 | `bridge-viewer/main.ts` | Browser entry used by Laravel bridge page |
-| `packages/laravel-bridge/routes/swagger-ui.php` | Bridge route registration for JSON + page + assets |
-| `packages/laravel-bridge/src/Http/Controllers/SwaggerViewerPageController.php` | Renders `/swagger-ui` page |
-| `packages/laravel-bridge/src/Http/Controllers/BridgeAssetController.php` | Serves offline viewer assets |
+| `packages/l5-swagger-ui-bridge/routes/swagger-ui.php` | Bridge route registration for JSON + page + assets |
+| `packages/l5-swagger-ui-bridge/src/Http/Controllers/SwaggerViewerPageController.php` | Renders `/swagger-ui` page |
+| `packages/l5-swagger-ui-bridge/src/Http/Controllers/BridgeAssetController.php` | Serves offline viewer assets |
 | `scripts/cli/install-bridge.mjs` | CLI entrypoint for Laravel bridge bootstrap |
 
 ## Documentation

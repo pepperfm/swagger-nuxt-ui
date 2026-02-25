@@ -99,7 +99,7 @@ Environment variables:
 - `SWAGGER_UI_SKIP_LARAVEL_BRIDGE=1`
 - `SWAGGER_UI_BRIDGE_STRICT=1`
 - `SWAGGER_UI_BRIDGE_PACKAGE=vendor/package`
-- `SWAGGER_UI_BRIDGE_PATH=/abs/path/to/packages/laravel-bridge`
+- `SWAGGER_UI_BRIDGE_PATH=/abs/path/to/packages/l5-swagger-ui-bridge`
 - `SWAGGER_UI_BRIDGE_CONSTRAINT=@dev`
 
 ## Logging Policy

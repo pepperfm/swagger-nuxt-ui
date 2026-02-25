@@ -20,7 +20,7 @@
   },
   "files": [
     "dist/lib",
-    "packages/laravel-bridge",
+    "packages/l5-swagger-ui-bridge",
     "scripts"
   ],
   "scripts": {

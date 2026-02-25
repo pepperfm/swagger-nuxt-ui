@@ -7,7 +7,7 @@ import { runCommand } from './lib/run-command.mjs'
 
 const DEFAULT_BRIDGE_PACKAGE = 'pepperfm/swagger-ui-laravel-bridge'
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
-const EMBEDDED_BRIDGE_PATH = resolve(SCRIPT_DIR, '../packages/laravel-bridge')
+const EMBEDDED_BRIDGE_PATH = resolve(SCRIPT_DIR, '../packages/l5-swagger-ui-bridge')
 
 function isStrictMode() {
   return process.env.SWAGGER_UI_BRIDGE_STRICT === '1'

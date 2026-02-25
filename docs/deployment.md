@@ -58,7 +58,7 @@ bun run build:bridge-assets
 ### 3) Local path-repo bridge install
 
 - Run:
-  `bunx swagger-ui-bridge-install --path /abs/path/to/packages/laravel-bridge --constraint @dev`
+  `bunx swagger-ui-bridge-install --path /abs/path/to/packages/l5-swagger-ui-bridge --constraint @dev`
 - Verify `composer.json` contains path repository for bridge package.
 - Verify viewer opens at `/swagger-ui` and loads local assets.
 - Expected diagnostics: actionable `WARN/ERROR` if path invalid, constraint rejected, or package name mismatch.

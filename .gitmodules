@@ -1,0 +1,3 @@
+[submodule "packages/l5-swagger-ui-bridge"]
+	path = packages/l5-swagger-ui-bridge
+	url = git@github.com:pepperfm/l5-swagger-ui-bridge.git

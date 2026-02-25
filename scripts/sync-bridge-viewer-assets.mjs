@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 
 const sourceDir = join(process.cwd(), 'dist/viewer')
-const targetDir = join(process.cwd(), 'packages/laravel-bridge/resources/assets')
+const targetDir = join(process.cwd(), 'packages/l5-swagger-ui-bridge/resources/assets')
 
 const requiredFiles = ['viewer.js', 'viewer.css']
 
