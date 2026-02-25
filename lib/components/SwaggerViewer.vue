@@ -527,7 +527,7 @@ watch(selectedAnchor, (anchor) => {
                   {{ selectedItem.method.toUpperCase() }}
                 </UBadge>
                 <code
-                  class="text-sm font-mono text-muted-foreground cursor-pointer"
+                  class="text-sm font-mono text-info cursor-pointer transition-colors hover:text-muted-foreground"
                   @click="copyEndpointUrl"
                 >
                   {{ selectedEndpointDisplayUrl }}
