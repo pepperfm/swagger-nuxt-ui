@@ -2,40 +2,25 @@
 
 # API Reference
 
-## Server Endpoints (Demo + Bridge)
+## Laravel Routes
 
-### `GET /api/swagger`
+### `GET /api/swagger-ui`
 
-Reads and returns JSON from `resources/api-docs/api-docs.json`.
+Returns OpenAPI schema JSON.
 
-Responses:
+Resolution priority:
 
-- `200`: parsed OpenAPI JSON
-- `404`: schema file missing
-- `500`: invalid JSON in schema file
-
-Logs:
-
-- `WARN`: missing schema file
-- `ERROR`: JSON parse failure
-
-### `GET /api/swagger-ui` (Laravel bridge contract)
-
-Returns OpenAPI JSON for Laravel consumers.
-
-Schema source resolution priority:
-
-1. `config('swagger-ui-bridge.schema_path')` when explicitly configured.
-2. `l5-swagger` generated docs path from Laravel config (if available).
-3. Fallback `storage/api-docs/api-docs.json`.
+1. `config('swagger-ui-bridge.schema_path')`
+2. `l5-swagger` configured docs file
+3. `storage/api-docs/api-docs.json`
 
 Responses:
 
-- `200`: parsed OpenAPI JSON
-- `404`: schema file missing for all resolution candidates
-- `422`: schema file exists but contains invalid JSON
+- `200` parsed JSON
+- `404` schema file not found
+- `422` schema JSON invalid
 
-Error body contract:
+Error body examples:
 
 ```json
 {
@@ -51,99 +36,27 @@ Error body contract:
 }
 ```
 
-### `GET /swagger-ui` (Laravel bridge viewer page contract)
+### `GET /swagger-ui`
 
-Returns standalone HTML page with embedded Swagger viewer UI.
+Returns standalone viewer HTML page using offline package assets.
 
-Runtime behavior:
+### `GET /swagger-ui/assets/{asset}`
 
-- Viewer frontend bootstraps from local bridge assets (no CDN).
-- Default schema source is `GET /api/swagger-ui`.
-- Viewer keeps working offline when assets are published in the bridge package.
+Serves `viewer.js` and `viewer.css` only.
 
-Responses:
+## Route Registration Behavior
 
-- `200`: HTML viewer page rendered.
-- `404`: route is not registered (disabled or conflicting route already exists in host app).
-- `500`: bridge viewer asset is missing/unreadable (critical render failure).
+Route registration is skipped (with WARN log) when:
 
-Logs:
+- route name already exists
+- GET path already exists
+- route path is empty/invalid
 
-- `WARN`: viewer route disabled or skipped due to route name/path conflict.
-- `ERROR`: critical render failure (for example missing asset file).
+## Internal Viewer Build Contract
 
-## Library Exports
-
-Entry: `@pepper_fm/swagger-nuxt-ui`
-
-- `SwaggerViewer`
-- `ContentNavigation`
-- `EndpointRequestCard`
-- `RequestParametersList`
-- `RequestBodyCard`
-- `ResponseExampleCard`
-- `SchemaDetailCard`
-- `useSwaggerSchema`
-- `useSwaggerNavigation`
-- `useSelectedOperation`
-- `useRequestEmulator`
-- `generateExampleFromSchema`
-- `interpolatePathParams`
-- `serializeQueryParams`
-- `buildRequestUrl`
-- `applySecurityHeader`
-- `buildCurlCommand`
-- `createSwaggerUiPlugin`
-- OpenAPI types from `lib/types.ts`
-
-Styles entry:
-
-- `@pepper_fm/swagger-nuxt-ui/styles.css`
-
-## `SwaggerViewer` Component Contract
-
-Props:
-
-- `schemaSource?: string` (default `/api/swagger-ui`)
-- `baseApiUrl?: string`
-- `schemaHeadline?: string`
-- `titleFallback?: string`
-- `descriptionFallback?: string`
-- `enableRequestEmulator?: boolean` (default `true`)
-- `requestTimeoutMs?: number` (default `0`, timeout disabled)
-
-Events:
-
-- `schema-error` (`SwaggerSchemaLoadError`)
-- `schema-loaded` (`IApiSpec`)
-
-## Composable Contract Highlights
-
-### `useSwaggerSchema(strategy?)`
-
-- Supports local endpoint and explicit URL source input.
-- Exposes `schema`, `isLoading`, `loadError`, `loadSchema`, `defaultSource`.
-
-### `useSwaggerNavigation(schemaRef)`
-
-- Builds endpoint groups and schema navigation nodes.
-- Logs `WARN` on unsupported/invalid operation records.
-
-### `useSelectedOperation({ schema, endpointNavigation })`
-
-- Maintains selected endpoint/schema item.
-- Resolves request params, security, and request body schema.
-
-### `useRequestEmulator(options)`
-
-- Builds editable request state for selected endpoint (path/query/header/cookie + auth + body).
-- Validates required inputs and JSON body shape before send.
-- Executes browser-side `fetch` request and exposes response state.
-
-Notes:
-
-- Execution is client-side and subject to CORS policy of target API.
-- Timeout handling is optional (`requestTimeoutMs`), disabled by default.
+- entrypoint: `bridge-viewer/main.ts`
+- output: `dist/viewer/viewer.js`, `dist/viewer/viewer.css`
+- synced runtime assets: `resources/assets/*`
 
 ## See Also
 

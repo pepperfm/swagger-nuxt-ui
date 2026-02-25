@@ -4,83 +4,56 @@
 
 ## Prerequisites
 
-- Node.js 20+
-- `bun` (or `npm`)
-- Laravel host only if bridge flow is needed
+- PHP 8.2+
+- Laravel 10/11/12
+- Composer
+- Node.js 20+ and `bun` (only for package development/building viewer assets)
 
-## Demo App Setup
+## Consumer Install (Laravel)
+
+```bash
+composer require pepperfm/swagger-nuxt-ui-for-laravel
+```
+
+Then open:
+
+- `GET /swagger-ui`
+- `GET /api/swagger-ui`
+
+If using `darkaonline/l5-swagger`, regenerate schema when needed:
+
+```bash
+php artisan l5-swagger:generate
+```
+
+## Optional Config Publish
+
+```bash
+php artisan vendor:publish --tag=swagger-ui-bridge-config
+```
+
+## Local Package Development
 
 ```bash
 bun install
-bun run dev:app
-```
-
-Open `http://localhost:3000`.
-
-### Local Schema Contract
-
-- File path: `resources/api-docs/api-docs.json`
-- Required fields: `openapi`, `info`, `paths`
-- Format: valid JSON
-
-Failure behavior:
-
-- Missing file -> API `404`, server logs `WARN`
-- Invalid JSON -> API `500`, server logs `ERROR`
-
-## Library Consumer Setup
-
-```bash
-bun add @pepper_fm/swagger-nuxt-ui
-```
-
-Use component:
-
-```vue
-<script setup lang="ts">
-import { SwaggerViewer } from '@pepper_fm/swagger-nuxt-ui'
-import '@pepper_fm/swagger-nuxt-ui/styles.css'
-</script>
-
-<template>
-  <SwaggerViewer schema-source="/api/swagger-ui" base-api-url="/api" />
-</template>
-```
-
-## Laravel Zero-Config Bridge Setup
-
-Run installer in Laravel host project:
-
-```bash
-bunx swagger-ui-bridge-install
-```
-
-Expected result:
-
-- `GET /swagger-ui` -> viewer page
-- `GET /api/swagger-ui` -> OpenAPI JSON
-
-### Local Bridge Development Mode
-
-```bash
-bunx swagger-ui-bridge-install --path /absolute/path/to/packages/l5-swagger-ui-bridge --constraint @dev
-```
-
-Useful options:
-
-- `--project-root /path/to/laravel`
-- `--package pepperfm/swagger-ui-laravel-bridge`
-- `--strict`
-
-## Build Commands
-
-```bash
-bun run lint
-bun run typecheck
-bun run build:app
-bun run build:lib
 bun run build:bridge-assets
 ```
+
+This updates runtime assets in `resources/assets`.
+
+## Migration from Legacy Flow
+
+Old flow:
+
+- `bun add @pepper_fm/swagger-nuxt-ui`
+- `bunx swagger-ui-bridge-install`
+
+New canonical flow:
+
+- `composer require pepperfm/swagger-nuxt-ui-for-laravel`
+
+Legacy `swagger-ui-bridge-install` is now deprecated and only prints guidance.
+Compatibility note: root package declares `replace` for `pepperfm/swagger-ui-laravel-bridge`.
 
 ## See Also
 
