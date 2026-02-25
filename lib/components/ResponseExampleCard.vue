@@ -83,7 +83,7 @@ watch(() => props.method, () => {
       </p>
       <pre
         v-if="item.example !== undefined"
-        class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-120 bg-muted text-muted-foreground cursor-pointer"
+        class="text-xs font-mono whitespace-pre-wrap rounded p-2 bg-muted text-muted-foreground cursor-pointer"
         @click="copyContent(JSON.stringify(item.example, null, 2))"
       >{{ JSON.stringify(item.example, null, 2) }}</pre>
     </div>

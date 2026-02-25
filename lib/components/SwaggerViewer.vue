@@ -653,7 +653,7 @@ watch(selectedAnchor, (anchor) => {
             class="w-full"
           >
             <pre
-              class="text-xs font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-220 bg-muted text-muted-foreground cursor-pointer mb-4"
+              class="text-xs font-mono whitespace-pre-wrap rounded p-2 bg-muted text-muted-foreground cursor-pointer mb-4"
               title="Click to copy example"
               @click="copyContent(JSON.stringify(example, null, 2))"
             >{{ JSON.stringify(example, null, 2) }}</pre>

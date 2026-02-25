@@ -107,10 +107,7 @@ function isInputLocked(schemeKey: string): boolean {
       description="OpenAPI schema does not define components.securitySchemes."
     />
 
-    <UScrollArea
-      v-else
-      class="max-h-[52vh] pe-2"
-    >
+    <div v-else>
       <div class="space-y-4">
         <UCard
           v-for="scheme in props.schemes"
@@ -183,6 +180,6 @@ function isInputLocked(schemeKey: string): boolean {
           </UFormField>
         </UCard>
       </div>
-    </UScrollArea>
+    </div>
   </div>
 </template>

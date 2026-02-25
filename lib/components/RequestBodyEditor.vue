@@ -175,16 +175,14 @@ const formValuesModel = computed<RequestBodyFormValueMap>({
           />
 
           <UFormField>
-            <UScrollArea class="max-h-[32rem] w-full">
-              <UTextarea
-                v-model="jsonValueModel"
-                :rows="14"
-                autoresize
-                :maxrows="72"
-                class="font-mono text-xs w-full"
-                :disabled="disabled"
-              />
-            </UScrollArea>
+            <UTextarea
+              v-model="jsonValueModel"
+              :rows="14"
+              autoresize
+              :maxrows="72"
+              class="font-mono text-xs w-full"
+              :disabled="disabled"
+            />
           </UFormField>
         </div>
       </template>
@@ -207,17 +205,14 @@ const formValuesModel = computed<RequestBodyFormValueMap>({
             description="Body schema has no resolvable fields for form mode."
           />
 
-          <UScrollArea
-            v-else
-            class="max-h-72 w-full"
-          >
+          <div v-else>
             <RequestBodyFormFields
               v-model="formValuesModel"
               :inputs="formInputs"
               :disabled="disabled"
               class="pe-1"
             />
-          </UScrollArea>
+          </div>
         </div>
       </template>
     </UTabs>

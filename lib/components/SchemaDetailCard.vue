@@ -209,7 +209,7 @@ function resolveArrayItemSchema(
 
             <div
               v-if="prop.example !== undefined && prop.example !== ''"
-              class="text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 overflow-auto max-h-40 whitespace-pre-wrap font-mono"
+              class="text-xs text-muted mt-1 cursor-pointer bg-gray-100 dark:bg-muted/50 rounded p-2 whitespace-pre-wrap font-mono"
               title="Click to copy example"
               @click="copyContent(stringifyExample(prop.example))"
             >

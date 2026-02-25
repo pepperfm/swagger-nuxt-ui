@@ -152,7 +152,7 @@ function renderItems(items?: OpenApiSchemaObject): string[] {
       >
         Example:
         <pre
-          class="font-mono whitespace-pre-wrap rounded p-2 overflow-auto max-h-40 cursor-pointer bg-gray-100 dark:bg-muted/50"
+          class="font-mono whitespace-pre-wrap rounded p-2 cursor-pointer bg-gray-100 dark:bg-muted/50"
           @click="copyContent(prop.example)"
         >{{ typeof prop.example === 'string' ? prop.example : JSON.stringify(prop.example, null, 2) }}</pre>
       </div>
