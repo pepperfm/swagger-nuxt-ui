@@ -4,6 +4,7 @@ import type {
   NormalizedSecuritySchemeMeta,
   OpenApiSecurityRequirement,
   OpenApiSecurityScheme,
+  OpenApiServerObject,
   RequestEmulatorPreparedRequest,
 } from '../types'
 
@@ -63,6 +64,37 @@ export function buildRequestUrl(baseApiUrl: string, endpointPath: string, query:
   }
 
   return `${normalizedBase}${normalizedPath}${query}`
+}
+
+export function resolveOpenApiServerUrl(server: OpenApiServerObject | null | undefined): string {
+  if (!server || typeof server.url !== 'string') {
+    return ''
+  }
+
+  const template = server.url.trim()
+  if (!template) {
+    return ''
+  }
+
+  const variables = server.variables ?? {}
+  return template.replace(/\{([^}]+)\}/g, (_match, variableName: string) => {
+    const candidate = variables[variableName]
+    if (!candidate || typeof candidate !== 'object') {
+      return ''
+    }
+
+    const defaultValue = typeof candidate.default === 'string' ? candidate.default.trim() : ''
+    if (defaultValue) {
+      return defaultValue
+    }
+
+    if (!Array.isArray(candidate.enum)) {
+      return ''
+    }
+
+    const firstEnum = candidate.enum.find(value => typeof value === 'string' && value.trim() !== '')
+    return firstEnum ? firstEnum.trim() : ''
+  }).trim()
 }
 
 function createEmptyAuthorizationTarget(): AuthorizationTarget {

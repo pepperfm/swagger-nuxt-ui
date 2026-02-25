@@ -131,6 +131,18 @@ export interface OpenApiComponents {
   [key: string]: unknown
 }
 
+export interface OpenApiServerVariableObject {
+  default?: string
+  enum?: string[]
+  description?: string
+}
+
+export interface OpenApiServerObject {
+  url: string
+  description?: string
+  variables?: Record<string, OpenApiServerVariableObject>
+}
+
 export interface IApiSpec {
   openapi: string
   info: {
@@ -147,10 +159,7 @@ export interface IApiSpec {
       url?: string
     }
   }
-  servers?: Array<{
-    url: string
-    description?: string
-  }>
+  servers?: OpenApiServerObject[]
   paths: PathsObject
   components?: OpenApiComponents
   tags?: Array<{

@@ -34,7 +34,7 @@ const schemaHeadline = computed(() => {
 })
 
 const baseApiUrl = computed(() => {
-  return typeof runtimeConfig.baseApiUrl === 'string' ? runtimeConfig.baseApiUrl : ''
+  return typeof runtimeConfig.baseApiUrl === 'string' ? runtimeConfig.baseApiUrl.trim() : ''
 })
 
 const fatalErrorMessage = ref<string | null>(null)

@@ -14,6 +14,7 @@ import {
   watch,
 } from 'vue'
 import { resolveAnchorFromLocation } from '../composables/navigationAnchor'
+import { buildRequestUrl, resolveOpenApiServerUrl } from '../composables/requestEmulatorUtils'
 import { generateExampleFromSchema } from '../composables/schemaExample'
 import { useCopy } from '../composables/useCopy'
 import { useSelectedOperation } from '../composables/useSelectedOperation'
@@ -82,7 +83,7 @@ const {
   getSecurityRequirements,
 } = useSelectedOperation({ schema, navigationIndex })
 
-const normalizedBaseApiUrl = computed(() => props.baseApiUrl.replace(/\/+$/, ''))
+const normalizedBaseApiUrl = computed(() => props.baseApiUrl.trim().replace(/\/+$/, ''))
 const title = computed(() => schema.value?.info?.title ?? props.titleFallback)
 const description = computed(() => schema.value?.info?.description ?? props.descriptionFallback)
 const components = computed<OpenApiComponents>(() => schema.value?.components ?? {})
@@ -151,6 +152,25 @@ const selectedEndpoint = computed(() => {
   return selectedItem.value
 })
 
+const resolvedSchemaBaseApiUrl = computed(() => {
+  const operationServer = selectedEndpointMethod.value?.servers?.[0]
+  const schemaServer = schema.value?.servers?.[0]
+  const resolved = resolveOpenApiServerUrl(operationServer) || resolveOpenApiServerUrl(schemaServer)
+  return resolved.replace(/\/+$/, '')
+})
+
+const effectiveBaseApiUrl = computed(() => {
+  return normalizedBaseApiUrl.value || resolvedSchemaBaseApiUrl.value
+})
+
+const selectedEndpointDisplayUrl = computed(() => {
+  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
+    return ''
+  }
+
+  return buildRequestUrl(effectiveBaseApiUrl.value, selectedItem.value.url, '')
+})
+
 const SELECTION_QUERY_KEYS = ['anchor', 'operation', 'schema']
 let skipNextLocationSync = false
 
@@ -203,12 +223,11 @@ async function initializeSchema() {
 }
 
 function copyEndpointUrl() {
-  if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
+  if (!selectedEndpointDisplayUrl.value) {
     return
   }
 
-  const url = `${normalizedBaseApiUrl.value}${selectedItem.value.url}`
-  copyContent(url)
+  copyContent(selectedEndpointDisplayUrl.value)
 }
 
 function replaceLocationSelectionAnchor(anchor: string | null) {
@@ -521,7 +540,7 @@ watch(selectedAnchor, (anchor) => {
                     class="text-sm font-mono text-muted-foreground cursor-pointer"
                     @click="copyEndpointUrl"
                   >
-                    {{ normalizedBaseApiUrl }}{{ selectedItem.url }}
+                    {{ selectedEndpointDisplayUrl }}
                   </code>
                   <UButton
                     size="xs"
@@ -611,7 +630,7 @@ watch(selectedAnchor, (anchor) => {
             :parameters="selectedEndpointParameters"
             :components="components"
             :authorization="selectedEndpointAuthorization"
-            :base-api-url="normalizedBaseApiUrl"
+            :base-api-url="effectiveBaseApiUrl"
             :request-timeout-ms="props.requestTimeoutMs"
           />
 
