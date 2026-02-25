@@ -3,8 +3,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 
 const sourceDir = join(process.cwd(), 'dist/viewer')
-const targetDir = join(process.cwd(), 'packages/l5-swagger-ui-bridge/resources/assets')
-
+const targetDir = join(process.cwd(), 'resources/assets')
 const requiredFiles = ['viewer.js', 'viewer.css']
 
 for (const fileName of requiredFiles) {
@@ -22,4 +21,4 @@ for (const fileName of requiredFiles) {
   copyFileSync(join(sourceDir, fileName), join(targetDir, fileName))
 }
 
-console.info('[swagger-ui] Bridge viewer assets synced')
+console.info('[swagger-ui] Bridge viewer assets synced to resources/assets')

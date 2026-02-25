@@ -2,41 +2,35 @@
 
 # Contributing
 
-## Branch and Commit Hygiene
+## Scope Rules
 
-- Keep changes focused and atomic.
-- Use descriptive commit messages (Conventional Commits preferred).
-- Avoid mixing refactors with behavior changes unless required.
+- Keep changes atomic.
+- Avoid mixing runtime PHP refactors with unrelated UI tweaks.
+- Preserve route contract: `/swagger-ui`, `/api/swagger-ui`.
 
-## Local Validation Checklist
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm build
-```
-
-If Docker workflow is used:
+## Local Validation
 
 ```bash
-make docker-build
-make docker-up
+bun install
+bun run lint
+bun run typecheck
+bun run build:bridge-assets
 ```
 
-## Code Style
+For PHP syntax checks (optional):
 
-- Follow ESLint rules from `eslint.config.mjs`.
-- Keep UI logic reusable; extract complex logic into composables.
-- Preserve Nuxt conventions for pages/components/composables.
+```bash
+find src routes config -name '*.php' -print0 | xargs -0 -n1 php -l
+```
 
-## Pull Request Expectations
+## PR Expectations
 
-- Explain user-visible impact.
-- Include screenshots for UI changes.
-- Mention any config/env additions.
+- Describe user-visible behavior changes.
+- Mention config key or env changes.
+- Attach screenshots for viewer UI updates.
 
 ## See Also
 
-- [Architecture](architecture.md) - dependency and module boundaries.
-- [Deployment](deployment.md) - release process and container workflows.
-- [API Reference](api.md) - endpoint and composable contracts.
+- [Architecture](architecture.md)
+- [Deployment](deployment.md)
+- [API Reference](api.md)

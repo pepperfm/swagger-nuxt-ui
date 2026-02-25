@@ -2,66 +2,44 @@
 
 # Deployment
 
-## Demo App Deployment
+## Consumer Projects (Laravel)
 
-Build and preview:
+No Node/Bun install is required on server for package runtime.
 
-```bash
-bun run build:app
-bun run preview
-```
-
-Existing workflow: `.github/workflows/deploy.yml` deploys demo app over SSH.
-
-## Library + Bridge Release Flow
-
-Release workflow: `.github/workflows/release.yml`
-
-Pipeline stages:
-
-1. Install dependencies
-2. Run lint/typecheck
-3. Build library (`bun run build:lib`)
-4. Build standalone viewer + sync bridge assets (`bun run build:bridge-assets`)
-5. Verify artifacts for library and bridge viewer
-6. Upload build artifacts
-7. Publish package on `release.published` (if `NPM_TOKEN` is configured)
-
-## Recommended Checks Before Release
+Canonical install:
 
 ```bash
-bun run lint
-bun run typecheck
-bun run build:app
-bun run build:lib
-bun run build:bridge-assets
+composer require pepperfm/swagger-nuxt-ui-for-laravel
 ```
 
-## Laravel Bridge Smoke Checklist (Acceptance Gate)
+If old package name was used before, remove it from `composer.json` and keep only the new package.
 
-### 1) Laravel + `darkaonline/l5-swagger`
+Then validate:
 
-- Install npm package and run `bunx swagger-ui-bridge-install`.
-- Generate docs: `php artisan l5-swagger:generate`.
-- Verify `GET /api/swagger-ui` returns `200` JSON.
-- Verify `GET /swagger-ui` renders viewer page.
-- Expected diagnostics: no `ERROR`; possible `WARN` only on route conflict.
+- `GET /api/swagger-ui` returns OpenAPI JSON
+- `GET /swagger-ui` renders viewer
 
-### 2) Laravel without `l5-swagger` (fallback file)
+## Package Release Checklist (Composer-First)
 
-- Ensure `storage/api-docs/api-docs.json` exists.
-- Run `bunx swagger-ui-bridge-install`.
-- Verify `GET /api/swagger-ui` returns `200` JSON from fallback file.
-- Verify `GET /swagger-ui` renders viewer page.
-- If fallback file is missing, expect `404` with `code: schema_file_not_found` and bridge `ERROR` log.
+1. `bun install`
+2. `bun run lint`
+3. `bun run typecheck`
+4. `bun run build:bridge-assets`
+5. Verify files exist:
+- `resources/assets/viewer.js`
+- `resources/assets/viewer.css`
+- `src/SwaggerUiBridgeServiceProvider.php`
+- `routes/swagger-ui.php`
+6. Tag and publish Composer package (`pepperfm/swagger-nuxt-ui-for-laravel`)
+7. Smoke test in clean Laravel app with Composer-only install
 
-### 3) Local path-repo bridge install
+## CI Notes
 
-- Run:
-  `bunx swagger-ui-bridge-install --path /abs/path/to/packages/l5-swagger-ui-bridge --constraint @dev`
-- Verify `composer.json` contains path repository for bridge package.
-- Verify viewer opens at `/swagger-ui` and loads local assets.
-- Expected diagnostics: actionable `WARN/ERROR` if path invalid, constraint rejected, or package name mismatch.
+Workflow `.github/workflows/release.yml` builds viewer assets and validates synced files in `resources/assets`.
+
+## Legacy Flow
+
+`bunx swagger-ui-bridge-install` is deprecated and should not be used in deploy scripts.
 
 ## See Also
 

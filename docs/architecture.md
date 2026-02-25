@@ -4,45 +4,32 @@
 
 ## Overview
 
-The repository uses layered architecture with two top-level modules:
+Repository is Laravel-package-first with internal frontend build tooling.
 
-- **Demo app module** (`app/`, `server/`, `resources/`)
-- **Library module** (`lib/`)
+Layers:
 
-The demo app validates real behavior by consuming the same exported library API that third-party projects use.
-
-## Layer Map
-
-```text
-Host Demo Layer
-  app/pages/index.vue
-  app/components/* (adapters)
-  app/composables/* (adapters)
-  server/api/swagger.ts
-  server/api/swagger-ui.ts
-  resources/api-docs/api-docs.json
-
-Reusable Library Layer
-  lib/index.ts
-  lib/types.ts
-  lib/components/*
-  lib/composables/*
-  lib/styles/swagger-ui.css
-```
-
-## Data Flow
-
-1. `SwaggerViewer` (library) loads schema via `useSwaggerSchema`.
-2. In demo mode, source is `/api/swagger-ui` (`/api/swagger` kept as alias).
-3. Server endpoint reads `resources/api-docs/api-docs.json`.
-4. Library composables derive navigation and selected operation state.
-5. Library components render endpoint, request/response, and schema views.
+1. Laravel runtime package (root): `composer.json`, `src/`, `routes/`, `config/`, `resources/views`, `resources/assets`
+2. Viewer frontend source: `lib/` + `bridge-viewer/`
+3. Demo host app (for local iteration only): `app/`, `server/`, `resources/api-docs`
 
 ## Dependency Rules
 
-- App layer may import from library layer.
-- Library layer must not import from app layer.
-- Server endpoint remains isolated from UI components.
+- Laravel runtime must not depend on Nuxt runtime.
+- Vue/Nuxt source is build-time only for producing viewer assets.
+- Demo app can import from `lib/`, but runtime package does not import from `app/`.
+
+## Runtime Flow
+
+1. Laravel route `/swagger-ui` renders Blade page.
+2. Blade page loads offline assets from `/swagger-ui/assets/*`.
+3. Viewer requests schema from `/api/swagger-ui`.
+4. Schema resolver checks configured path, then l5-swagger, then storage fallback.
+
+## Build Flow
+
+1. `vite.viewer.config.ts` builds standalone viewer bundle.
+2. `scripts/sync-bridge-viewer-assets.mjs` syncs bundle into `resources/assets`.
+3. Composer package ships with prebuilt assets.
 
 ## See Also
 

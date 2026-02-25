@@ -1,4 +1,4 @@
-name: Release Library
+name: Release Laravel Package Assets
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  build-library:
+  build-assets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,71 +39,21 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      - name: Build library
-        run: pnpm run build:lib
-
       - name: Build bridge viewer assets
         run: pnpm run build:bridge-assets
 
-      - name: Verify library artifacts
+      - name: Verify viewer artifacts
         shell: bash
         run: |
           set -euo pipefail
-          test -f dist/lib/index.mjs || (echo "ERROR: dist/lib/index.mjs missing" && exit 1)
-          test -f dist/lib/index.cjs || (echo "ERROR: dist/lib/index.cjs missing" && exit 1)
-          test -f dist/lib/types.d.ts || (echo "ERROR: dist/lib/types.d.ts missing" && exit 1)
-          test -f dist/lib/index.css || (echo "ERROR: dist/lib/index.css missing" && exit 1)
           test -f dist/viewer/viewer.js || (echo "ERROR: dist/viewer/viewer.js missing" && exit 1)
           test -f dist/viewer/viewer.css || (echo "ERROR: dist/viewer/viewer.css missing" && exit 1)
-          test -f packages/laravel-bridge/resources/assets/viewer.js || (echo "ERROR: bridge viewer.js missing" && exit 1)
-          test -f packages/laravel-bridge/resources/assets/viewer.css || (echo "ERROR: bridge viewer.css missing" && exit 1)
-
-      - name: Upload library artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: swagger-ui-library-dist
-          path: dist/lib
-          if-no-files-found: error
+          test -f resources/assets/viewer.js || (echo "ERROR: resources/assets/viewer.js missing" && exit 1)
+          test -f resources/assets/viewer.css || (echo "ERROR: resources/assets/viewer.css missing" && exit 1)
 
       - name: Upload bridge viewer artifact
         uses: actions/upload-artifact@v4
         with:
           name: swagger-ui-bridge-viewer-assets
-          path: packages/laravel-bridge/resources/assets
+          path: resources/assets
           if-no-files-found: error
-
-  publish-npm:
-    if: ${{ github.event_name == 'release' }}
-    needs: build-library
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node and npm registry
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Build library
-        run: pnpm run build:lib
-
-      - name: Build bridge viewer assets
-        run: pnpm run build:bridge-assets
-
-      - name: Publish package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public

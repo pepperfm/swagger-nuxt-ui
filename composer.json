@@ -1,0 +1,29 @@
+{
+  "name": "pepperfm/swagger-nuxt-ui-for-laravel",
+  "description": "Laravel-first Swagger UI package with offline Nuxt UI viewer assets and l5-swagger integration.",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "illuminate/support": ">=10.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Pepperfm\\SwaggerUiBridge\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Pepperfm\\SwaggerUiBridge\\SwaggerUiBridgeServiceProvider"
+      ]
+    }
+  },
+  "keywords": [
+    "laravel",
+    "swagger",
+    "openapi",
+    "nuxt-ui",
+    "l5-swagger"
+  ]
+}
