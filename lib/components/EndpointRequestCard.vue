@@ -345,7 +345,7 @@ async function onSendClick() {
 
         <div
           v-if="sortedResponseHeaders.length"
-          class="rounded border border-default p-2 bg-muted/10"
+          class="w-full rounded-md border border-default bg-muted p-2 text-muted-foreground"
         >
           <p
             v-for="[name, value] in sortedResponseHeaders"
@@ -360,8 +360,8 @@ async function onSendClick() {
           <span class="text-xs text-muted">Body</span>
         </div>
 
-        <div class="w-full rounded-md border border-default bg-muted/20">
-          <pre class="text-xs font-mono whitespace-pre-wrap wrap-break-word p-2 text-muted-foreground">{{ responseState.result.bodyText || '(empty)' }}</pre>
+        <div class="w-full rounded-md border border-default bg-muted text-muted-foreground">
+          <pre class="text-xs font-mono whitespace-pre-wrap wrap-break-word p-2">{{ responseState.result.bodyText || '(empty)' }}</pre>
         </div>
       </div>
     </UCard>
