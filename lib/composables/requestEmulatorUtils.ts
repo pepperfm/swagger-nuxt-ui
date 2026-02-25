@@ -97,6 +97,29 @@ export function resolveOpenApiServerUrl(server: OpenApiServerObject | null | und
   }).trim()
 }
 
+export function resolveServerUrlForDisplay(serverUrl: string, schemaSource: string): string {
+  const normalizedServerUrl = serverUrl.trim()
+  if (!normalizedServerUrl) {
+    return ''
+  }
+
+  if (typeof window === 'undefined') {
+    return normalizedServerUrl
+  }
+
+  const normalizedSchemaSource = schemaSource.trim()
+  const fallbackBase = window.location.href
+
+  try {
+    const schemaUrl = normalizedSchemaSource
+      ? new URL(normalizedSchemaSource, fallbackBase)
+      : new URL(fallbackBase)
+    return new URL(normalizedServerUrl, schemaUrl).toString()
+  } catch {
+    return normalizedServerUrl
+  }
+}
+
 function createEmptyAuthorizationTarget(): AuthorizationTarget {
   return {
     headers: {},

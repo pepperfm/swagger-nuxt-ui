@@ -167,129 +167,127 @@ async function onSendClick() {
         </div>
       </template>
 
-      <UScrollArea class="max-h-[56vh] pr-2">
-        <div class="space-y-3 pe-1">
+      <div class="space-y-3">
+        <UAlert
+          v-if="authorizationWarning"
+          color="warning"
+          variant="soft"
+          title="Authorization is incomplete"
+          :description="authorizationWarning"
+        />
+
+        <div
+          v-if="groupedInputs.path.length"
+          class="space-y-2"
+        >
+          <USeparator label="PATH" />
+          <UFormField
+            v-for="input in groupedInputs.path"
+            :key="input.key"
+            :label="input.name"
+            :help="input.description || undefined"
+            :error="errorForField(input.key)"
+          >
+            <ParameterInputField
+              v-model="input.value"
+              :spec="input.spec"
+              :disabled="responseState.isSending"
+            />
+          </UFormField>
+        </div>
+
+        <div
+          v-if="groupedInputs.query.length"
+          class="space-y-2"
+        >
+          <USeparator label="QUERY" />
+          <UFormField
+            v-for="input in groupedInputs.query"
+            :key="input.key"
+            :label="input.name"
+            :help="input.description || undefined"
+            :error="errorForField(input.key)"
+          >
+            <ParameterInputField
+              v-model="input.value"
+              :spec="input.spec"
+              :disabled="responseState.isSending"
+            />
+          </UFormField>
+        </div>
+
+        <div
+          v-if="groupedInputs.header.length"
+          class="space-y-2"
+        >
+          <USeparator label="HEADERS" />
+          <UFormField
+            v-for="input in groupedInputs.header"
+            :key="input.key"
+            :label="input.name"
+            :help="input.description || undefined"
+            :error="errorForField(input.key)"
+          >
+            <ParameterInputField
+              v-model="input.value"
+              :spec="input.spec"
+              :disabled="responseState.isSending"
+            />
+          </UFormField>
+        </div>
+
+        <div
+          v-if="groupedInputs.cookie.length"
+          class="space-y-2"
+        >
+          <USeparator label="COOKIES" />
+          <UFormField
+            v-for="input in groupedInputs.cookie"
+            :key="input.key"
+            :label="input.name"
+            :help="input.description || undefined"
+            :error="errorForField(input.key)"
+          >
+            <ParameterInputField
+              v-model="input.value"
+              :spec="input.spec"
+              :disabled="responseState.isSending"
+            />
+          </UFormField>
+        </div>
+
+        <div
+          v-if="hasRequestBody"
+          class="space-y-2"
+        >
+          <USeparator label="BODY" />
+          <UFormField :error="errorForField('body')">
+            <RequestBodyEditor
+              v-model:mode="bodyEditorMode"
+              v-model:json-value="requestBodyText"
+              v-model:form-values="requestBodyFormValues"
+              :content-type="requestBodyContentType"
+              :json-warning="requestBodyJsonWarning"
+              :form-warnings="requestBodyFormWarnings"
+              :form-inputs="requestBodyFormInputs"
+              :disabled="responseState.isSending"
+            />
+          </UFormField>
+        </div>
+
+        <div
+          v-if="validationErrors.length"
+          role="alert"
+          aria-live="polite"
+        >
           <UAlert
-            v-if="authorizationWarning"
+            title="Request has validation errors"
             color="warning"
             variant="soft"
-            title="Authorization is incomplete"
-            :description="authorizationWarning"
+            :help="validationErrors[0]?.message"
           />
-
-          <div
-            v-if="groupedInputs.path.length"
-            class="space-y-2"
-          >
-            <USeparator label="PATH" />
-            <UFormField
-              v-for="input in groupedInputs.path"
-              :key="input.key"
-              :label="input.name"
-              :help="input.description || undefined"
-              :error="errorForField(input.key)"
-            >
-              <ParameterInputField
-                v-model="input.value"
-                :spec="input.spec"
-                :disabled="responseState.isSending"
-              />
-            </UFormField>
-          </div>
-
-          <div
-            v-if="groupedInputs.query.length"
-            class="space-y-2"
-          >
-            <USeparator label="QUERY" />
-            <UFormField
-              v-for="input in groupedInputs.query"
-              :key="input.key"
-              :label="input.name"
-              :help="input.description || undefined"
-              :error="errorForField(input.key)"
-            >
-              <ParameterInputField
-                v-model="input.value"
-                :spec="input.spec"
-                :disabled="responseState.isSending"
-              />
-            </UFormField>
-          </div>
-
-          <div
-            v-if="groupedInputs.header.length"
-            class="space-y-2"
-          >
-            <USeparator label="HEADERS" />
-            <UFormField
-              v-for="input in groupedInputs.header"
-              :key="input.key"
-              :label="input.name"
-              :help="input.description || undefined"
-              :error="errorForField(input.key)"
-            >
-              <ParameterInputField
-                v-model="input.value"
-                :spec="input.spec"
-                :disabled="responseState.isSending"
-              />
-            </UFormField>
-          </div>
-
-          <div
-            v-if="groupedInputs.cookie.length"
-            class="space-y-2"
-          >
-            <USeparator label="COOKIES" />
-            <UFormField
-              v-for="input in groupedInputs.cookie"
-              :key="input.key"
-              :label="input.name"
-              :help="input.description || undefined"
-              :error="errorForField(input.key)"
-            >
-              <ParameterInputField
-                v-model="input.value"
-                :spec="input.spec"
-                :disabled="responseState.isSending"
-              />
-            </UFormField>
-          </div>
-
-          <div
-            v-if="hasRequestBody"
-            class="space-y-2"
-          >
-            <USeparator label="BODY" />
-            <UFormField :error="errorForField('body')">
-              <RequestBodyEditor
-                v-model:mode="bodyEditorMode"
-                v-model:json-value="requestBodyText"
-                v-model:form-values="requestBodyFormValues"
-                :content-type="requestBodyContentType"
-                :json-warning="requestBodyJsonWarning"
-                :form-warnings="requestBodyFormWarnings"
-                :form-inputs="requestBodyFormInputs"
-                :disabled="responseState.isSending"
-              />
-            </UFormField>
-          </div>
-
-          <div
-            v-if="validationErrors.length"
-            role="alert"
-            aria-live="polite"
-          >
-            <UAlert
-              title="Request has validation errors"
-              color="warning"
-              variant="soft"
-              :help="validationErrors[0]?.message"
-            />
-          </div>
         </div>
-      </UScrollArea>
+      </div>
     </UCard>
 
     <USeparator label="RESPONSE" />
@@ -362,9 +360,9 @@ async function onSendClick() {
           <span class="text-xs text-muted">Body</span>
         </div>
 
-        <UScrollArea class="max-h-80 w-full rounded-md border border-default bg-muted/20">
+        <div class="w-full rounded-md border border-default bg-muted/20">
           <pre class="text-xs font-mono whitespace-pre-wrap wrap-break-word p-2 text-muted-foreground">{{ responseState.result.bodyText || '(empty)' }}</pre>
-        </UScrollArea>
+        </div>
       </div>
     </UCard>
 

@@ -14,7 +14,7 @@ import {
   watch,
 } from 'vue'
 import { resolveAnchorFromLocation } from '../composables/navigationAnchor'
-import { buildRequestUrl, resolveOpenApiServerUrl } from '../composables/requestEmulatorUtils'
+import { buildRequestUrl, resolveOpenApiServerUrl, resolveServerUrlForDisplay } from '../composables/requestEmulatorUtils'
 import { generateExampleFromSchema } from '../composables/schemaExample'
 import { useCopy } from '../composables/useCopy'
 import { useSelectedOperation } from '../composables/useSelectedOperation'
@@ -163,12 +163,21 @@ const effectiveBaseApiUrl = computed(() => {
   return normalizedBaseApiUrl.value || resolvedSchemaBaseApiUrl.value
 })
 
+const effectiveDisplayBaseApiUrl = computed(() => {
+  const rawBaseApiUrl = effectiveBaseApiUrl.value
+  if (!rawBaseApiUrl) {
+    return ''
+  }
+
+  return resolveServerUrlForDisplay(rawBaseApiUrl, props.schemaSource).replace(/\/+$/, '')
+})
+
 const selectedEndpointDisplayUrl = computed(() => {
   if (!selectedItem.value || selectedItem.value.type !== 'endpoint') {
     return ''
   }
 
-  return buildRequestUrl(effectiveBaseApiUrl.value, selectedItem.value.url, '')
+  return buildRequestUrl(effectiveDisplayBaseApiUrl.value, selectedItem.value.url, '')
 })
 
 const SELECTION_QUERY_KEYS = ['anchor', 'operation', 'schema']
@@ -622,7 +631,12 @@ watch(selectedAnchor, (anchor) => {
       </template>
 
       <template #right>
-        <UPageAside v-if="schema && !isLoading">
+        <UPageAside
+          v-if="schema && !isLoading"
+          :ui="{
+            root: 'hidden lg:block py-8 lg:ps-4 lg:-ms-4 lg:pe-6.5',
+          }"
+        >
           <EndpointRequestCard
             v-if="props.enableRequestEmulator && selectedEndpoint"
             :endpoint="selectedEndpoint"
